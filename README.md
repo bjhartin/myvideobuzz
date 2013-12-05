@@ -1,4 +1,4 @@
-MyVideoBuzz
+MyVideoBuzz -- Protuhj's Fork
 =============
 
 This project is fork of https://github.com/jesstech/Roku-YouTube, it is updated to fix the API changes and added new features and removed OAuth settings.
@@ -11,6 +11,8 @@ Enable development mode on your Roku Streaming Player with the following remote
 control sequence:
 
     Home 3x, Up 2x, Right, Left, Right, Left, Right
+
+On newer versions of the Roku firmware, you will then be prompted to set the web server password. Choose a password (and remember it!), then reboot the Roku.
 
 When devleopment mode is enabled on your Roku, you can install dev packages
 from the Application Installer which runs on your device at your device's IP
