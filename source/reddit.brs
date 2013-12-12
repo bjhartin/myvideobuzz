@@ -12,7 +12,7 @@
 '     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
 '******************************************************************************
 Sub ViewReddits(youtube as Object, url = "videos" as String)
-    screen = uitkPreShowPosterMenu("arced-landscape", "Reddit")
+    screen = uitkPreShowPosterMenu("flat-episodic-16x9", "Reddit")
     screen.showMessage("Loading subreddits...")
     title = "Reddit"
     categories = RedditCategoryList()
