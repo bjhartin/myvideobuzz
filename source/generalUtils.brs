@@ -665,8 +665,12 @@ End Sub
 '******************************************************
 ' Walk a list and print it
 '******************************************************
-Sub PrintList(list as Object)
-    print "---- list ----"
+Sub PrintList(list as Object, header = "" as String)
+    if ( header <> "" ) then
+        print( "---- " + header + " ----")
+    else
+        print( "---- list ----" )
+    end if
     PrintAnyList(0, list)
     print "--------------"
 End Sub

@@ -12,9 +12,10 @@
 '     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
 '******************************************************************************
 Sub ViewReddits(youtube as Object, url = "videos" as String)
-    screen = uitkPreShowPosterMenu("flat-episodic-16x9", "Reddit")
+    screen = uitkPreShowPosterMenu("arced-landscape", "Reddit")
     screen.showMessage("Loading subreddits...")
     title = "Reddit"
+    categories = RedditCategoryList()
     if (url = "videos") then
         tempSubs = RegRead("subreddits", "reddit")
         if (tempSubs <> invalid) then
@@ -23,25 +24,107 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
             end if
         end if
     end if
-    response = QueryReddit(url)
+    categoryList = CreateObject("roArray", 100, true)
+    for each category in categories
+        categoryList.Push(category.title)
+    next
+    ' Category selection function
+     oncontent_callback = [categories, m,
+        function(categories, youtube, set_idx)
+            if (categories.Count() > 0) then
+                categories[set_idx].links.Clear()
+                categories[set_idx].links.Push( categories[set_idx].link )
+                metadata = doQuery(categories[set_idx].link, false, categories[set_idx])
+                return metadata
+            else
+                return []
+            end if
+        end function]
+    ' Function that runs when a video/action arrow is selected
+    onclick_callback = [categories, youtube,
+        function(categories, youtube, video, category_idx, set_idx)
+            if (video[set_idx]["action"] <> invalid) then
+                linksList = categories[category_idx].links
+
+                if (video[set_idx]["action"] = "next") then
+                    ' Last item is the next item link
+                    theLink = linksList.Peek()
+                else
+                    ' Previous button - should only be visible if there are at least 3 items in the list
+                    ' The last item at this point is the 'next link'
+                    ' The second to last item is the current URL
+                    ' The third-to-last item is the previous URL
+
+                    ' This pops off the 'next link' which can be thrown away if we are going to the previous results
+                    linksList.Pop()
+                    if ( linksList.Count() > 1 ) then
+                        ' This pops off the 'current URL' which can be thrown away if we are going to the previous results, since it will
+                        ' be re-added via the doQuery call
+                        linksList.Pop()
+                        ' The final item is the previous item we meant to go view
+                        theLink = linksList.Peek()
+                    else
+                        ' If there is one item left in the list, leave it alone since it is the initial subreddit link
+                        theLink = linksList.Peek()
+                    end if
+                end if
+                if ( theLink = invalid ) then
+                    theLink = categories[category_idx].link
+                end if
+                ' Include a Back button, if there is more than one item left in the list
+                previous = linksList.Count() > 1
+                return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) } 
+            else
+                youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
+                return { isContentList: false, content: video }
+            end if
+        end function]
+        uitkDoCategoryMenu(categoryList, screen, oncontent_callback, onclick_callback, onplay_callback)
+End Sub
+
+'******************************************************************************
+' Helper function to query reddit, as well as build the metadata based on the response
+' @param multireddits an optional URL with the multireddit to query, or the full link to parse. This is used when hitting the 'More Results' or 'Back' buttons on the video list page.
+'     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
+' @param includePrevious should a previous button be included in the results metadata?
+' @param categoryObject the (optional) category object for the current subreddit (category)
+'******************************************************************************
+Function doQuery(multireddits = "videos" as String, includePrevious = false as Boolean, categoryObject = invalid as Dynamic) as Object
+    response = QueryReddit(multireddits)
     if (response.status = 403) then
         ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
-        return
+        return []
     end if
     if (response.status <> 200 OR response.json = invalid OR response.json.kind <> "Listing") then
         ShowConnectionFailed()
-        return
+        return []
     end if
 
     ' Everything is OK, display the list
     json = response.json
-    videos = NewRedditVideoList(json.data.children)
-    youtube.DisplayVideoListFromVideoList(videos, title, response.links, screen, invalid, GetRedditMetaData)
-End Sub
+    metadata = GetRedditMetaData(NewRedditVideoList(json.data.children))
+
+    ' Now add the 'More results' button
+    for each link in response.links
+        if (type(link) = "roAssociativeArray") then
+            if (link.type = "next") then
+                metadata.Push({shortDescriptionLine1: "More Results", action: "next", HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+                if ( categoryObject <> invalid ) then
+                    categoryObject.links.Push( link.href )
+                end if
+            end if
+        end if
+    end for
+    if ( includePrevious = true ) then
+        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+    end if
+
+    return metadata
+End Function
 
 '******************************************************************************
 ' Runs the query against the reddit servers, and handles parsing the response
-' @param url an optional URL with the multireddit to query, or the full link to parse. This is used when hitting the 'More Results' or 'Back' buttons on the video list page.
+' @param multireddits an optional URL with the multireddit to query, or the full link to parse. This is used when hitting the 'More Results' or 'Back' buttons on the video list page.
 '     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
 ' @return an roAssociativeArray containing the following members:
 '               json = the JSON object represented as an roAssociativeArray
@@ -51,12 +134,12 @@ End Sub
 '                   href = URL to the next or previous page of results
 '               status = the HTTP status code response from the GET call
 '******************************************************************************
-Function QueryReddit(url = "videos" as String) As Object
+Function QueryReddit(multireddits = "videos" as String) As Object
     method = "GET"
-    if (Instr(0, url, "http://")) then
-        http = NewHttp(url)
+    if (Instr(0, multireddits, "http://")) then
+        http = NewHttp(multireddits)
     else
-        http = NewHttp("http://www.reddit.com/r/" + url + "/hot.json")
+        http = NewHttp("http://www.reddit.com/r/" + multireddits + "/hot.json")
     end if
     headers = { }
 
@@ -72,22 +155,14 @@ Function QueryReddit(url = "videos" as String) As Object
     if (json <> invalid) then
         if (json.data.after <> invalid) then
             link = CreateObject("roAssociativeArray")
-            link.func = ViewReddits
+            link.func = doQuery
             link.type = "next"
             http.RemoveParam("after", "urlParams")
             http.AddParam("after", json.data.after, "urlParams")
             link.href = http.GetURL()
             links.Push(link)
         end if
-        if (json.data.before <> invalid) then
-            link = CreateObject("roAssociativeArray")
-            link.func = ViewReddits
-            link.type = "previous"
-            http.RemoveParam("before", "urlParams")
-            http.AddParam("before", json.data.before, "urlParams")
-            link.href = http.GetURL()
-            links.Push(link)
-        end if
+        ' Reddit doesn't give a "real" previous URL
     end if
     returnObj = CreateObject("roAssociativeArray")
     returnObj.json = json
@@ -113,6 +188,35 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         end if
     next
     return videoList
+End Function
+
+'********************************************************************
+' Creates the list of categories from the provided XML
+' @return an roList, which will be sorted by the yt:unreadCount if the XML
+'         represents a list of subscriptions.
+'********************************************************************
+Function RedditCategoryList() As Object
+    categoryList  = CreateObject("roList")
+    subreddits = RegRead("subreddits", "reddit")
+    if (RegRead("enabled", "reddit") = invalid) then
+        if (subreddits <> invalid) then
+            regex = CreateObject("roRegex", "\+", "") ' split on plus
+            subredditArray = regex.Split(subreddits)
+        else
+            subredditArray = ["videos"]
+        end if
+    else
+        subredditArray = []
+    end if
+    for each record in subredditArray
+        category        = CreateObject("roAssociativeArray")
+        category.title  = record
+        category.link   = "http://www.reddit.com/r/" + record + "/hot.json"
+        category.links  = CreateObject("roList")
+        category.links.Push(category.link)
+        categoryList.Push(category)
+    next
+    return categoryList
 End Function
 
 '******************************************************************************
@@ -172,7 +276,7 @@ End Function
 ' Custom metadata function needed to simplify displaying of content metadata for reddit results.
 ' This is necessary since the amount of metadata available for videos is much less than that available
 ' when querying YouTube directly.
-' This will be called from video.brs::DisplayVideoListFromVideoList
+' This will be called from doQuery
 ' It would be possible to Query YouTube for the additional metadata, but I don't know if that's worth it.
 ' @param videoList a list of video objects retrieved via the function NewRedditVideo
 ' @return an array of content metadata suitable for the Roku's screen objects.

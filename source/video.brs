@@ -298,10 +298,10 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         onclick_callback = [categories, m,
             function(categories, youtube, video, category_idx, set_idx)
                 if (video[set_idx]["action"] <> invalid) then
-                    return youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid)
+                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid) }
                 else
                     youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
-                    return video
+                    return { isContentList: false, content: video}
                 end if
             end function]
         uitkDoCategoryMenu(categoryList, screen, oncontent_callback, onclick_callback, onplay_callback)
@@ -355,6 +355,9 @@ End Sub
 ' @param xmlList the XML to create the category list from.
 ' @return an roList, which will be sorted by the yt:unreadCount if the XML
 '         represents a list of subscriptions.
+'         each category has the following members:
+'           title
+'           link
 '********************************************************************
 Function CategoriesListFromXML_impl(xmlList As Object) As Object
     'print "CategoriesListFromXML_impl init"

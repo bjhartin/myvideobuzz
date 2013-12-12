@@ -219,10 +219,18 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 userdata2 = onclick_callback[1]
                 content_f = onclick_callback[2]
 
-                contentlist = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
-                if (contentlist.Count() <> 0) then
-                    screen.SetContentList(contentlist)
-                    screen.SetFocusedListItem(msg.GetIndex())
+                contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
+                if ( contentData.isContentList = true ) then
+                    contentlist = contentData.content
+                    if (contentlist.Count() <> 0) then
+                        if ( contentlist[0]["action"] <> invalid AND contentlist.Count() > 1 ) then
+                            screen.SetFocusedListItem(1)
+                        else
+                            screen.SetFocusedListItem(0)
+                        end if
+                        screen.SetContentList(contentlist)
+                        'screen.SetFocusedListItem(msg.GetIndex())
+                    end if
                 end if
             else if (msg.isListItemFocused()) then
                 idx% = msg.GetIndex()
