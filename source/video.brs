@@ -75,8 +75,11 @@ Function InitYouTube() As Object
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
 
+    ' LAN Videos related members
+    this.dateObj = CreateObject( "roDateTime" )
     this.udp_socket = invalid
     this.mp_socket  = invalid
+    this.udp_created = 0
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex

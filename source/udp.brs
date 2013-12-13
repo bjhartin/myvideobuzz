@@ -23,9 +23,23 @@ Sub MulticastInit(youtube as Object)
     udp.joinGroup(addr)
     udp.NotifyReadable(true)
     udp.NotifyWritable(false)
-
+    youtube.dateObj.Mark()
+    youtube.udp_created = youtube.dateObj.AsSeconds()
+    print ("Youtube.udp_created = " + tostr(youtube.udp_created))
     youtube.udp_socket = udp
     youtube.mp_socket = msgPort
+End Sub
+
+Sub HandleStaleMessagePort( youtube as Dynamic )
+    youtube.dateObj.Mark()
+    secs = youtube.dateObj.AsSeconds()
+    print ( " HandleStaleMessagePort current secs: " + tostr(secs) )
+    if ( ( secs - youtube.udp_created ) > 1000 ) then
+        youtube.udp_socket.Close()
+        youtube.mp_socket = invalid
+        print("Re-initializing UDP socket")
+        MulticastInit( youtube )
+    end if
 End Sub
 
 '********************************************************************
@@ -50,7 +64,7 @@ Sub CheckForMCast()
 
             ' Replace newlines
             data = regexNewline.ReplaceAll( data, "" )
-            ' print("Received " + Left(data, 2) + " from " + Mid(data, 3))
+            print("Received " + Left(data, 2) + " from " + Mid(data, 3))
             if ((Left(data, 2) = "1?") AND (Mid(data, 3) <> youtube.device_id)) then
                 ' Nothing to do if there's no video to watch
                 if (youtube.activeVideo <> invalid) then
@@ -81,6 +95,7 @@ Sub CheckForMCast()
         ' print(SimpleJSONBuilder(youtube.activeVideo))
         youtube.activeVideo.xml = xml
     end if
+     HandleStaleMessagePort( youtube )
 End Sub
 
 '********************************************************************
@@ -99,6 +114,7 @@ Sub CheckForLANVideos(youtube as Object)
     dialog = ShowPleaseWait("Searching for videos on your LAN")
     ' Multicast query
     youtube.udp_socket.SendStr("1?" + youtube.device_id)
+    print("Socket [eOK:" + tostr(youtube.udp_socket.eOK()) + "] [eSuccess: " + tostr(youtube.udp_socket.eSuccess()) + "] [Status: " + tostr(youtube.udp_socket.Status()) + "]")
     ' Wait a maximum of 5 seconds for a response
     t = CreateObject("roTimespan")
     message = wait(2500, youtube.mp_socket)

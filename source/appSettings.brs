@@ -81,10 +81,12 @@ Sub youtube_about()
     screen.Show()
 
     while (true)
-        msg = wait(0, screen.GetMessagePort())
+        msg = wait(2000, screen.GetMessagePort())
 
         if (type(msg) = "roParagraphScreenEvent") then
             return
+        else if (msg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Sub

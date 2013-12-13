@@ -122,9 +122,7 @@ Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Intege
     screen.SetContent(posterdata)
 
     while (true)
-        msg = wait(0, screen.GetMessagePort())
-
-        'print "uitkDoPosterMenu | msg type = ";type(msg)
+        msg = wait(2000, screen.GetMessagePort())
 
         if (type(msg) = "roListScreenEvent") then
             'print "event.GetType()=";msg.GetType(); " Event.GetMessage()= "; msg.GetMessage()
@@ -168,6 +166,8 @@ Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Intege
             else if (msg.isScreenClosed()) then
                 return -1
             end if
+        else if (msg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Function

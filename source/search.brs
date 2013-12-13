@@ -12,7 +12,7 @@ Sub youtube_search()
     screen.Show()
 
     while (true)
-        msg = wait(0, port)
+        msg = wait(2000, port)
 
         if (type(msg) = "roSearchScreenEvent") then
             'print "Event: "; msg.GetType(); " msg: "; msg.GetMessage()
@@ -63,8 +63,8 @@ Sub youtube_search()
             'else
                 'print("Unhandled event on search screen")
             end if
-        'else
-            'print("Unhandled msg type: " + type(msg))
+        else if (msg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Sub
@@ -109,7 +109,7 @@ Function SearchOptionDialog() as Integer
     dialog.addButton(4, "Done")
     dialog.Show()
     while true
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
                 if (dlgMsg.GetIndex() = 1) then
@@ -162,6 +162,8 @@ Function SearchOptionDialog() as Integer
                 ' print ("Unhandled msg type")
                 exit while
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         else
             ' print ("Unhandled msg: " + type(dlgMsg))
             exit while
@@ -212,7 +214,7 @@ Function SearchFilterClicked() as String
     dialog.Show()
     retVal = "ignore"
     while true
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
                 if (dlgMsg.GetIndex() = 1) then
@@ -228,6 +230,8 @@ Function SearchFilterClicked() as String
             else if (dlgMsg.isScreenClosed()) then
                 exit while
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         end if
     end while
     dialog.Close()
@@ -255,7 +259,7 @@ Function SearchDateClicked() as String
     dialog.Show()
     retVal = "ignore"
     while true
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
                 if (dlgMsg.GetIndex() = 1) then
@@ -271,6 +275,8 @@ Function SearchDateClicked() as String
             else if (dlgMsg.isScreenClosed()) then
                 exit while
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         end if
     end while
     dialog.Close()
@@ -298,7 +304,7 @@ Function SearchSortClicked() as String
     dialog.Show()
     retVal = "ignore"
     while true
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
                 if (dlgMsg.GetIndex() = 1) then
@@ -314,6 +320,8 @@ Function SearchSortClicked() as String
             else if (dlgMsg.isScreenClosed()) then
                 exit while
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         end if
     end while
     dialog.Close()

@@ -102,7 +102,7 @@ Sub ShowDialog1Button(title As Dynamic, text As Dynamic, but1 As String, quickRe
     end if
 
     while (true)
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
 
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isScreenClosed()) then
@@ -112,6 +112,8 @@ Sub ShowDialog1Button(title As Dynamic, text As Dynamic, but1 As String, quickRe
                 'print "Button pressed: "; dlgMsg.GetIndex(); " " dlgMsg.GetData()
                 return
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Sub
@@ -141,7 +143,7 @@ Function ShowDialog2Buttons(title As dynamic, text As dynamic, but1 As String, b
     dialog.Show()
 
     while (true)
-        dlgMsg = wait(0, dialog.GetMessagePort())
+        dlgMsg = wait(2000, dialog.GetMessagePort())
 
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isScreenClosed()) then
@@ -153,6 +155,8 @@ Function ShowDialog2Buttons(title As dynamic, text As dynamic, but1 As String, b
                 dialog = invalid
                 return dlgMsg.GetIndex()
             end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Function
@@ -172,7 +176,7 @@ Function getKeyboardInput(title As String, search_text As String, submit_text="S
     screen.Show()
 
     while (true)
-        msg = wait(0, screen.GetMessagePort())
+        msg = wait(2000, screen.GetMessagePort())
 
         if (type(msg) = "roKeyboardScreenEvent") then
             if (msg.isScreenClosed()) then
@@ -185,6 +189,8 @@ Function getKeyboardInput(title As String, search_text As String, submit_text="S
                     return invalid
                 end if
             end if
+        else if (msg = invalid) then
+            CheckForMCast()
         end if
     end while
 End Function
