@@ -1,0 +1,8 @@
+; Enter the list of all of your Roku devices on your network, along with their username and password
+; Should make it easier to update the channel on all of your devices
+; Remember: Every time you update the app on your Roku, it will start the channel immediately upon success.
+; So if you are watching something on one of your Rokus and you run this script, it will be interrupted.
+; Format is:
+;<RokuIP><space>rokudev:<RokuPassword>
+;ex:
+;192.168.1.52 rokudev:rokupass

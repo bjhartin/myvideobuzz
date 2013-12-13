@@ -14,7 +14,7 @@ control sequence:
 
 On newer versions of the Roku firmware, you will then be prompted to set the web server password. Choose a password (and remember it!), then reboot the Roku.
 
-When devleopment mode is enabled on your Roku, you can install dev packages
+When development mode is enabled on your Roku, you can install dev packages
 from the Application Installer which runs on your device at your device's IP
 address. Open up a standard web browser and visit the following URL:
 
@@ -24,6 +24,21 @@ address. Open up a standard web browser and visit the following URL:
 
 Due to limitations in the sandboxing of development Roku channels, you can only
 have one development channel installed at a time.
+
+### Alternative Installation Method - Windows users
+
+Download the whole repository [Here (This link will be updated when 1.5 is released)](https://github.com/Protuhj/myvideobuzz/archive/master.zip)
+Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
+
+    <Roku IP><space>rokudev:<rokupassword>
+    192.168.1.56 rokudev:rokupassword
+
+This will upload the myvideobuzz.zip file to the Rokus you provide in the rokus.txt file.
+
+You can copy the .\deploy\ folder somewhere permanent on your hard drive, and modify the deploy.bat file to change the location of the zip file,
+by changing the ZIP_LOCATION variable to point to the location of the zip you would like to deploy.
+
+By doing this, you won't have to edit the rokus.txt in the future when updating your Rokus.
 
 Advanced
 ========
