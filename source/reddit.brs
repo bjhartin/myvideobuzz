@@ -238,20 +238,18 @@ Function NewRedditVideo(jsonObject As Object) As Object
         return id
     end function
     video.GetTitle      = function()
-        return m.json.data.title
-        title = m.json.data.url
-        if (m.json.data.media <> invalid AND m.json.data.media.oembed <> invalid) then
-            title = m.json.data.media.oembed.title
-        end if
-        return title
+        return htmlDecode( m.json.data.title )
     end function
     video.GetCategory   = function(): return "/r/" + m.json.data.subreddit: end function
     video.GetDesc       = function()
         desc = ""
-        if (m.json.data.media <> invalid AND m.json.data.media.oembed <> invalid) then
+        if ( m.json.data.media <> invalid AND m.json.data.media.oembed <> invalid ) then
             desc = m.json.data.media.oembed.description
         end if
-        return desc
+        if ( desc = invalid ) then
+            desc = ""
+        end if
+        return htmlDecode( desc )
     end function
     video.GetScore      = function(): return m.json.data.score : end function
     video.GetThumb      = function()
