@@ -227,11 +227,10 @@ End Function
 '******************************************************************************
 Function NewRedditVideo(jsonObject As Object) As Object
     video               = CreateObject("roAssociativeArray")
-    ' video.youtube       = m
     video.json          = jsonObject
     video.GetID         = function()
-        ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
-        idMatches = CreateObject("roRegex", ".*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#\&\?]*).*", "").Match(m.json.data.url)
+        ' The URL needs to be decoded prior to attempting to match
+        idMatches = LoadYouTube().ytIDRegex.Match( URLDecode( m.json.data.url) )
         id = invalid
         if (idMatches.Count() > 1) then
             id = idMatches[1]

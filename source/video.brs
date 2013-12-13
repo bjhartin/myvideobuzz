@@ -78,6 +78,10 @@ Function InitYouTube() As Object
     this.udp_socket = invalid
     this.mp_socket  = invalid
 
+    ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
+    ' Pre-compile the YouTube video ID regex
+    this.ytIDRegex = CreateObject("roRegex", ".*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#\&\?]*).*", "")
+
     return this
 End Function
 
