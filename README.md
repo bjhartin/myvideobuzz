@@ -26,6 +26,7 @@ Due to limitations in the sandboxing of development Roku channels, you can only
 have one development channel installed at a time.
 
 ### Alternative Installation Method - Windows users
+============
 
 Download the whole repository [Here (This link will be updated when 1.5 is released)](https://github.com/Protuhj/myvideobuzz/archive/master.zip)
 Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
