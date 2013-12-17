@@ -195,29 +195,38 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
     end if
     screen.Show()
     idx% = 0
-
+    contentdata1 = invalid
+    contentdata2 = invalid
+    content_f = invalid
+    ' Tracks when the category was selected
+    category_time = CreateObject("roTimespan")
+    ' Tracks the amount of time between CheckForMCast calls
+    multicast_time = CreateObject("roTimespan")
+    ' This flag is used to determine when a query to the server for category data
+    ' should actually occur, rather than every time a category was selected
+    awaiting_timeout = false
+    ' Default the multicast timer
+    multicast_time.Mark()
     while (true)
-        msg = wait(2000, screen.GetMessagePort())
+        msg = wait(500, screen.GetMessagePort())
         if (type(msg) = "roPosterScreenEvent") then
             if (msg.isListFocused()) then
                 category_idx = msg.GetIndex()
                 contentdata1 = content_callback[0]
                 contentdata2 = content_callback[1]
                 content_f = content_callback[2]
-
-                contentlist = content_f(contentdata1, contentdata2, category_idx)
-
-                if (contentlist.Count() = 0) then
-                    screen.SetContentList([])
-                    screen.ShowMessage("No viewable content in this section")
-                else
-                    screen.SetContentList(contentlist)
-                    screen.SetFocusedListItem(0)
-                end if
+                ' Track that a timeout is being awaited
+                awaiting_timeout = true
+                ' Mark the time that the category was selected
+                category_time.Mark()
             else if (msg.isListItemSelected()) then
                 userdata1 = onclick_callback[0]
                 userdata2 = onclick_callback[1]
                 content_f = onclick_callback[2]
+
+                ' Reset the awaiting_timeout flag if an item is clicked
+                awaiting_timeout = false
+                category_time.Mark()
 
                 contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
                 if ( contentData.isContentList = true ) then
@@ -243,7 +252,24 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 end if
             end if
         else if (msg = invalid) then
-            CheckForMCast()
+            ' This addresses the issue when trying to scroll quickly through the category list,
+            ' previously, each category would queue a request to YouTube, and the user would have to wait when they
+            ' reached their desired category for the correct video list to load (could be painful with a lot of categories)
+            if (awaiting_timeout = true AND category_time.TotalMilliseconds() > 900) then
+                awaiting_timeout = false
+                contentlist = content_f(contentdata1, contentdata2, category_idx)
+                if (contentlist.Count() = 0) then
+                    screen.SetContentList([])
+                    screen.ShowMessage("No viewable content in this section")
+                else
+                    screen.SetContentList(contentlist)
+                    screen.SetFocusedListItem(0)
+                end if
+            else if (multicast_time.TotalSeconds() > 2) then
+                ' Don't allow the CheckForMCast function to run too much due to the category query change
+                multicast_time.Mark()
+                CheckForMCast()
+            end if
         end If
     end while
 End Function
