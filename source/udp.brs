@@ -5,7 +5,7 @@
 Sub MulticastInit(youtube as Object)
     msgPort = createobject("roMessagePort")
     udp = createobject("roDatagramSocket")
-    udp.setMessagePort(msgPort) 'notifications for udp come to msgPort
+    udp.setMessagePort(msgPort)
     addr = createobject("roSocketAddress")
     addr.setPort(6789)
     addr.SetHostName("224.0.0.115")
@@ -25,19 +25,23 @@ Sub MulticastInit(youtube as Object)
     udp.NotifyWritable(false)
     youtube.dateObj.Mark()
     youtube.udp_created = youtube.dateObj.AsSeconds()
-    print ("Youtube.udp_created = " + tostr(youtube.udp_created))
     youtube.udp_socket = udp
     youtube.mp_socket = msgPort
 End Sub
 
+'********************************************************************
+' Makes sure the UDP socket and message port stay fresh.
+' FIxes an issue where the message port seemingly becomes 'stale'
+' after a few hours of inactivity
+' Currently, the period is one hour, which seems like a decent number
+' @param youtube the current youtube object
+'********************************************************************
 Sub HandleStaleMessagePort( youtube as Dynamic )
     youtube.dateObj.Mark()
-    secs = youtube.dateObj.AsSeconds()
-    print ( " HandleStaleMessagePort current secs: " + tostr(secs) )
-    if ( ( secs - youtube.udp_created ) > 1000 ) then
+    ' Re-initialize the socket and message port every hour to avoid a stale message port
+    if ( ( youtube.dateObj.AsSeconds() - youtube.udp_created ) > 3600 ) then
         youtube.udp_socket.Close()
         youtube.mp_socket = invalid
-        print("Re-initializing UDP socket")
         MulticastInit( youtube )
     end if
 End Sub
@@ -95,7 +99,8 @@ Sub CheckForMCast()
         ' print(SimpleJSONBuilder(youtube.activeVideo))
         youtube.activeVideo.xml = xml
     end if
-     HandleStaleMessagePort( youtube )
+    ' Determine if the udp socket and message port need to be re-initialized
+    HandleStaleMessagePort( youtube )
 End Sub
 
 '********************************************************************
