@@ -356,6 +356,9 @@ Sub EditRedditSettings()
                         screen.SetSearchTerms(subredditArray)
                         RegDelete("enabled", "reddit")
                     end if
+                    ' When the user hits 'Add Subreddit' or hits ok on a subreddit on the right side, set the search text
+                    ' to make it easier to edit mistakes
+                    screen.SetSearchText( newOne )
                 end if
             else if (msg.isCleared()) then
                 subredditArray.Clear()
