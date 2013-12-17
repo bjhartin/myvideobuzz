@@ -328,7 +328,7 @@ Sub EditRedditSettings()
     screen.Show()
 
     while (true)
-        msg = wait(0, port)
+        msg = wait(2000, port)
 
         if (type(msg) = "roSearchScreenEvent") then
             'print "Event: "; msg.GetType(); " msg: "; msg.GetMessage()
@@ -369,8 +369,8 @@ Sub EditRedditSettings()
             'else
                 'print("Unhandled event on search screen")
             end if
-        'else
-            'print("Unhandled msg type: " + type(msg))
+        else if (msg = invalid) then
+            CheckForMCast()
         end if
     end while
     ' Save the user's subreddits when the settings screen is closing
