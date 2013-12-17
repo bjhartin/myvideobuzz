@@ -68,7 +68,7 @@ Sub CheckForMCast()
 
             ' Replace newlines
             data = regexNewline.ReplaceAll( data, "" )
-            print("Received " + Left(data, 2) + " from " + Mid(data, 3))
+            ' print("Received " + Left(data, 2) + " from " + Mid(data, 3))
             if ((Left(data, 2) = "1?") AND (Mid(data, 3) <> youtube.device_id)) then
                 ' Nothing to do if there's no video to watch
                 if (youtube.activeVideo <> invalid) then
