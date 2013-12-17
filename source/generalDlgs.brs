@@ -1,7 +1,7 @@
 
 '******************************************************
 ' Show basic message dialog without buttons
-' Dialog 'ains up until caller releases the returned object
+' Dialog remains up until caller releases the returned object
 '******************************************************
 Function ShowPleaseWait(title As String, text = "" As String) As Object
     if (not(isstr(title))) then
@@ -197,7 +197,7 @@ End Function
 
 '******************************************************
 'Show basic message dialog without buttons
-'Dialog 'ains up until caller releases the returned object
+'Dialog remains up until caller releases the returned object
 '******************************************************
 Function ShowDialogNoButton(title As dynamic, text As dynamic) As Object
     if (not(isstr(title))) then
