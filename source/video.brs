@@ -83,7 +83,7 @@ Function InitYouTube() As Object
     if ( videosJSON <> invalid AND isnonemptystr(videosJSON) ) then
         this.historyLen = Len(videosJSON)
         ' print("**** History string len: " + tostr(this.historyLen) + "****")
-        this.history = simpleJSONParser(videosJSON)
+        this.history = ParseJson(videosJSON)
         if ( islist(this.history) = false ) then
             this.history = []
         end if
