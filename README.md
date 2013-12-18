@@ -61,4 +61,6 @@ any changes.  Just add the project to your SDK's `examples/source` folder and ru
 Contributing
 ------------
 
-Want to contribute? Great! Please contact us http://www.myvideobuzz.in/
+Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz
+
+Or Donate: <a href='https://pledgie.com/campaigns/23378'><img alt='Click here to lend your support to: VideoBuzz Development and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/23378.png?skin_name=chrome' border='0' ></a>
