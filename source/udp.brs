@@ -51,7 +51,6 @@ End Sub
 ' Listens for active video queries, and responds if necessary
 '********************************************************************
 Sub CheckForMCast()
-    regexNewline = CreateObject( "roRegex", "\n", "ig" )
     youtube = LoadYouTube()
     if (youtube.mp_socket = invalid OR youtube.udp_socket = invalid) then
         print("CheckForMCast: Invalid Message Port or UDP Socket")
@@ -67,16 +66,16 @@ Sub CheckForMCast()
             data = youtube.udp_socket.receiveStr(4096) ' max 4096 characters
 
             ' Replace newlines
-            data = regexNewline.ReplaceAll( data, "" )
+            data = youtube.regexNewline.ReplaceAll( data, "" )
             ' print("Received " + Left(data, 2) + " from " + Mid(data, 3))
             if ((Left(data, 2) = "1?") AND (Mid(data, 3) <> youtube.device_id)) then
                 ' Nothing to do if there's no video to watch
-                if (youtube.activeVideo <> invalid) then
+                if (youtube.history <> invalid AND youtube.history.Count() > 0) then
                     mvbRespond = true
                 end if
             else if ((Left(data, 2) = "2:")) then ' Allow push of videos from other sources on the LAN (not implemented within this source)
-                ' print("Received force: " + Mid(data, 3))
-                youtube.activeVideo = ParseJson(Mid(data, 3))
+                print("Received force: " + Mid(data, 3))
+                'youtube.activeVideo = ParseJson(Mid(data, 3))
             else if ((Left(data, 2) = "1:")) then
                 ' print("Received udp response: " + Mid(data, 3))
             end if
@@ -85,19 +84,12 @@ Sub CheckForMCast()
         message = wait(10, youtube.mp_socket)
     end while
     if (mvbRespond = true) then
-        ' Cache the video's XML since we don't want it in the JSON
-        xml = youtube.activeVideo.xml
-        ' Zero out the xml prior to conversion to JSON
-        youtube.activeVideo.xml = invalid
-        json = SimpleJSONBuilder(youtube.activeVideo)
+        json = SimpleJSONBuilder(youtube.history[0])
         if (json <> invalid) then
             ' Replace all newlines in the JSON
-            json = regexNewline.ReplaceAll(json, "")
+            json = youtube.regexNewline.ReplaceAll(json, "")
             youtube.udp_socket.SendStr("1:" +  json)
         end if
-        ' PrintAA(youtube.activeVideo)
-        ' print(SimpleJSONBuilder(youtube.activeVideo))
-        youtube.activeVideo.xml = xml
     end if
     ' Determine if the udp socket and message port need to be re-initialized
     HandleStaleMessagePort( youtube )
@@ -110,7 +102,6 @@ End Sub
 ' @param youtube the current youtube object
 '********************************************************************
 Sub CheckForLANVideos(youtube as Object)
-    regexNewline = CreateObject( "roRegex", "\n", "ig" )
     jsonMetadata = []
     if (youtube.mp_socket = invalid OR youtube.udp_socket = invalid) then
         print("CheckForMCast: Invalid Message Port or UDP Socket")
@@ -119,7 +110,6 @@ Sub CheckForLANVideos(youtube as Object)
     dialog = ShowPleaseWait("Searching for videos on your LAN")
     ' Multicast query
     youtube.udp_socket.SendStr("1?" + youtube.device_id)
-    print("Socket [eOK:" + tostr(youtube.udp_socket.eOK()) + "] [eSuccess: " + tostr(youtube.udp_socket.eSuccess()) + "] [Status: " + tostr(youtube.udp_socket.Status()) + "]")
     ' Wait a maximum of 5 seconds for a response
     t = CreateObject("roTimespan")
     message = wait(2500, youtube.mp_socket)
@@ -128,13 +118,22 @@ Sub CheckForLANVideos(youtube as Object)
             data = youtube.udp_socket.receiveStr(4096) ' max 4096 characters
             ' print("Received " + Left(data, 2) + " from " + Mid(data, 3))
             ' Replace newlines -- this WILL screw up JSON parsing
-            data = regexNewline.ReplaceAll( data, "" )
+            data = youtube.regexNewline.ReplaceAll( data, "" )
             if ((Left(data, 2) = "1:")) then
                 response = Mid(data, 3)
                 ' print("Received udp response: " + response)
                 jsonObj = ParseJson(response)
                 if (jsonObj <> invalid) then
-                    jsonMetadata.Push(jsonObj)
+                    foundInList = false
+                    for each vid in jsonMetadata
+                        if ( vid["ID"] = jsonObj["ID"] ) then
+                            foundInList = true
+                            exit for
+                        end if
+                    end for
+                    if (not(foundInList)) then
+                        jsonMetadata.Push(jsonObj)
+                    end if
                 end if
             end if
         ' else the message is invalid

@@ -36,10 +36,6 @@ Function InitYouTube() As Object
     this.screen       = invalid
     this.video        = invalid
 
-    ' Caches the latest video the user has watched
-    ' This is used when sending out the video over the network
-    this.activeVideo = invalid
-
     'API Calls
     this.ExecServerAPI = youtube_exec_api
 
@@ -74,6 +70,24 @@ Function InitYouTube() As Object
     this.About = youtube_about
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
+    this.ClearHistory = ClearHistory_impl
+
+    ' History
+    this.ShowHistory = ShowHistory_impl
+    this.AddHistory = AddHistory_impl
+    ' TODO: Determine if this could be used for the reddit channel
+    ' this.GetVideoDetails = GetVideoDetails_impl
+    videosJSON = RegRead("videos", "history")
+    this.history = []
+    this.historyLen = 0
+    if ( videosJSON <> invalid AND isnonemptystr(videosJSON) ) then
+        this.historyLen = Len(videosJSON)
+        ' print("**** History string len: " + tostr(this.historyLen) + "****")
+        this.history = simpleJSONParser(videosJSON)
+        if ( islist(this.history) = false ) then
+            this.history = []
+        end if
+    end if
 
     ' LAN Videos related members
     this.dateObj = CreateObject( "roDateTime" )
@@ -84,6 +98,7 @@ Function InitYouTube() As Object
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
     this.ytIDRegex = CreateObject("roRegex", ".*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#\&\?]*).*", "")
+    this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
 
     return this
 End Function
@@ -206,7 +221,7 @@ End Sub
 ' YouTube Related Videos
 '********************************************************************
 Sub youtube_related_videos(video As Object)
-    m.FetchVideoList("videos/"+ video.id +"/related?v=2", "Related Videos", invalid)
+    m.FetchVideoList("videos/"+ video["ID"] +"/related?v=2", "Related Videos", invalid)
     'GetYTBase("videos/" + showList[showIndex].ContentId + "/related?v=2&start-index=1&max-results=50"))
 End Sub
 
@@ -417,21 +432,17 @@ Function youtube_new_video_list(xmlList As Object) As Object
 End Function
 
 Function youtube_new_video(xml As Object) As Object
-    video               = CreateObject("roAssociativeArray")
-    video.youtube       = m
-    video.xml           = xml
-    video.GetID         = function():return m.xml.GetNamedElements("media:group")[0].GetNamedElements("yt:videoid")[0].GetText():end function
-    video.GetAuthor     = get_xml_author
-    video.GetUserID     = function():return m.xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaderId")[0].GetText():end function
-    video.GetTitle      = function():return m.xml.title[0].GetText():end function
-    video.GetCategory   = function():return m.xml.GetNamedElements("media:group")[0].GetNamedElements("media:category")[0].GetText():end function
-    video.GetDesc       = get_desc
-    video.GetLength     = GetLength_impl
-    video.GetUploadDate = GetUploadDate_impl
-    video.GetRating     = get_xml_rating
-    video.GetThumb      = get_xml_thumb
-    'video.GetLinks     = function():return m.xml.GetNamedElements("link"):end function
-    'video.GetURL       = video_get_url
+    video                   = CreateObject("roAssociativeArray")
+    video["ID"]             = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:videoid")[0].GetText()
+    video["Author"]         = get_xml_author(xml)
+    video["UserID"]         = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaderId")[0].GetText()
+    video["Title"]          = xml.title[0].GetText()
+    video["Category"]       = xml.GetNamedElements("media:group")[0].GetNamedElements("media:category")[0].GetText()
+    video["Description"]    = get_desc(xml)
+    video["Length"]         = GetLength_impl(xml)
+    video["UploadDate"]     = GetUploadDate_impl(xml)
+    video["Rating"]         = get_xml_rating(xml)
+    video["Thumb"]          = get_xml_thumb(xml)
     return video
 End Function
 
@@ -442,22 +453,21 @@ Function GetVideoMetaData(videos As Object)
         meta = CreateObject("roAssociativeArray")
         meta.ContentType = "movie"
 
-        meta["ID"]                     = video.GetID()
-        meta["Author"]                 = video.GetAuthor()
-        meta["TitleSeason"]            = video.GetTitle()
-        meta["Title"]                  = video.GetAuthor() + "  - " + get_length_as_human_readable(video.GetLength())
-        meta["Actors"]                 = meta.Author
-        meta["Description"]            = video.GetDesc()
-        meta["Categories"]             = video.GetCategory()
-        meta["StarRating"]             = video.GetRating()
-        meta["ShortDescriptionLine1"]  =  meta.TitleSeason
-        meta["ShortDescriptionLine2"]  = meta.Title
-        meta["SDPosterUrl"]            = video.GetThumb()
-        meta["HDPosterUrl"]            = video.GetThumb()
-        meta["Length"]                 = video.GetLength().toInt()
-        meta["xml"]                    = video.xml
-        meta["UserID"]                 = video.GetUserID()
-        meta["ReleaseDate"]            = video.GetUploadDate()
+        meta["ID"]                     = video["ID"]
+        meta["Author"]                 = video["Author"]
+        meta["TitleSeason"]            = video["Title"]
+        meta["Title"]                  = video["Author"] + "  - " + get_length_as_human_readable(video["Length"])
+        meta["Actors"]                 = meta["Author"]
+        meta["Description"]            = video["Description"]
+        meta["Categories"]             = video["Category"]
+        meta["StarRating"]             = video["Rating"]
+        meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
+        meta["ShortDescriptionLine2"]  = meta["Title"]
+        meta["SDPosterUrl"]            = video["Thumb"]
+        meta["HDPosterUrl"]            = video["Thumb"]
+        meta["Length"]                 = video["Length"].toInt()
+        meta["UserID"]                 = video["UserID"]
+        meta["ReleaseDate"]            = video["UploadDate"]
         meta["StreamFormat"]           = "mp4"
         meta["Live"]                   = false
         meta["Streams"]                = []
@@ -473,8 +483,8 @@ Function GetVideoMetaData(videos As Object)
     return metadata
 End Function
 
-Function get_desc() As Dynamic
-    desc = m.xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
+Function get_desc(xml as Object) As Dynamic
+    desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
     if (desc.Count() > 0) then
         return Left(desc[0].GetText(), 300)
     end if
@@ -485,8 +495,8 @@ End Function
 '  Returns the length of the video from the yt:duration element:
 '  <yt:duration seconds=val>
 '*******************************************
-Function GetLength_impl() As Dynamic
-    durations = m.xml.GetNamedElements("media:group")[0].GetNamedElements("yt:duration")
+Function GetLength_impl(xml as Object) As Dynamic
+    durations = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:duration")
     if (durations.Count() > 0) then
         return durations.GetAttributes()["seconds"]
     end if
@@ -497,8 +507,8 @@ End Function
 '  Returns the date the video was uploaded, from the yt:uploaded element:
 '  <yt:uploaded>val</yt:uploaded>
 '*******************************************
-Function GetUploadDate_impl() As Dynamic
-    uploaded = m.xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaded")
+Function GetUploadDate_impl(xml as Object) As Dynamic
+    uploaded = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaded")
     if (uploaded.Count() > 0) then
         dateText = uploaded.GetText()
         'dateObj = CreateObject("roDateTime")
@@ -542,8 +552,8 @@ Function get_length_as_human_readable(length As Dynamic) As String
     return "Unknown"
 End Function
 
-Function get_xml_author() As Dynamic
-    credits=m.xml.GetNamedElements("media:group")[0].GetNamedElements("media:credit")
+Function get_xml_author(xml as Object) As Dynamic
+    credits = xml.GetNamedElements("media:group")[0].GetNamedElements("media:credit")
     if (credits.Count() > 0) then
         for each author in credits
             if (author.GetAttributes()["role"] = "uploader") then
@@ -553,22 +563,22 @@ Function get_xml_author() As Dynamic
     end if
 End Function
 
-Function get_xml_rating() As Dynamic
-    if (m.xml.GetNamedElements("gd:rating").Count() > 0) then
-        return Int(m.xml.GetNamedElements("gd:rating").GetAttributes()["average"].toFloat() * 20)
+Function get_xml_rating(xml as Object) As Dynamic
+    if (xml.GetNamedElements("gd:rating").Count() > 0) then
+        return Int(xml.GetNamedElements("gd:rating").GetAttributes()["average"].toFloat() * 20)
     end if
     return invalid
 End Function
 
-Function get_xml_thumb() As Dynamic
-    thumbs=m.xml.GetNamedElements("media:group")[0].GetNamedElements("media:thumbnail")
+Function get_xml_thumb(xml as Object) As Dynamic
+    thumbs = xml.GetNamedElements("media:group")[0].GetNamedElements("media:thumbnail")
     if (thumbs.Count() > 0) then
         for each thumb in thumbs
             if (thumb.GetAttributes()["yt:name"] = "mqdefault") then
                 return thumb.GetAttributes()["url"]
             end if
         end for
-        return m.xml.GetNamedElements("media:group")[0].GetNamedElements("media:thumbnail")[0].GetAttributes()["url"]
+        return xml.GetNamedElements("media:group")[0].GetNamedElements("media:thumbnail")[0].GetAttributes()["url"]
     end if
     return "pkg:/images/icon_s.jpg"
 End Function
@@ -581,10 +591,11 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
     p = CreateObject("roMessagePort")
     screen = CreateObject("roSpringboardScreen")
     screen.SetMessagePort(p)
+
     m.screen    = screen
     m.video     = theVideo
     screen.SetDescriptionStyle("movie")
-    if (theVideo.StarRating = invalid) then
+    if (theVideo["StarRating"] = invalid) then
         screen.SetStaticRatingEnabled(false)
     end if
     if (videos.Count() > 1) then
@@ -636,9 +647,9 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                 else if (msg.GetIndex() = 2) then
                     m.ShowRelatedVideos(m.video)
                 else if (msg.GetIndex() = 3) then
-                    m.BrowseUserVideos(m.video.Author, m.video.UserID)
+                    m.BrowseUserVideos(m.video["Author"], m.video["UserID"])
                 else if (msg.GetIndex() = 4) then
-                    m.BrowseUserPlaylists(m.video.Author, m.video.UserID)
+                    m.BrowseUserPlaylists(m.video["Author"], m.video["UserID"])
                 end if
             else if (msg.isRemoteKeyPressed()) then
                 if (msg.GetIndex() = 4) then  ' left
@@ -681,7 +692,7 @@ Function BuildButtons_impl() as Object
     m.screen.ClearButtons()
     buttons = CreateObject("roAssociativeArray")
     resumeEnabled = false
-    if (m.video.Live = false AND m.video.PlayStart > 0) then
+    if (m.video["Live"] = false AND m.video["PlayStart"] > 0) then
         resumeEnabled = true
         buttons["resume"]         = m.screen.AddButton(0, "Resume")
         buttons["restart"]        = m.screen.AddButton(5, "Play from beginning")
@@ -689,13 +700,13 @@ Function BuildButtons_impl() as Object
         buttons["play"]           = m.screen.AddButton(0, "Play")
     end if
     buttons["play_all"]     = m.screen.AddButton(1, "Play All")
-    if (m.video.Author <> invalid) then
+    if (m.video["Author"] <> invalid) then
         ' Hide related videos if the Resume/Play from beginning options are enabled
         if (not(resumeEnabled)) then
             buttons["show_related"] = m.screen.AddButton(2, "Show Related Videos")
         end if
-        buttons["more"]         = m.screen.AddButton(3, "More Videos By " + m.video.Author)
-        buttons["playlists"]    = m.screen.AddButton(4, "Show "+ m.video.Author + "'s playlists")
+        buttons["more"]         = m.screen.AddButton(3, "More Videos By " + m.video["Author"])
+        buttons["playlists"]    = m.screen.AddButton(4, "Show "+ m.video["Author"] + "'s playlists")
     end if
     return buttons
 End Function
@@ -711,11 +722,9 @@ Function DisplayVideo(content As Object)
 
     yt = LoadYouTube()
 
-    ' Cache the video information for network sharing
-    yt.activeVideo = content
-
     video.SetContent(content)
     video.show()
+
     ret = -1
     while (true)
         msg = wait(0, video.GetMessagePort())
@@ -733,16 +742,12 @@ Function DisplayVideo(content As Object)
                 content["PlayStart"] = msg.GetIndex()
             else if (msg.isFullResult()) then
                 content["PlayStart"] = 0
-                ' The video has completed, zero out the cached version
-                yt.activeVideo    = invalid
             else if (msg.isPartialResult()) then
                 ' For plugin videos, the Length may not be available.
                 if (content.Length <> invalid) then
                     ' If we're within 30 seconds of the end of the video, don't allow resume
-                    if (content.PlayStart > (content.Length - 30)) then
+                    if (content["PlayStart"] > (content["Length"] - 30)) then
                         content["PlayStart"] = 0
-                        ' The video has completed, zero out the cached version
-                        yt.activeVideo    = invalid
                     end if
                 end if
                 ' Else if the length isn't valid, always allow resume
@@ -751,15 +756,18 @@ Function DisplayVideo(content As Object)
             end if
         end if
     end while
+    ' Add the video to history
+    ' Add it here 
+    yt.AddHistory(content)
     return ret
 End Function
 
 function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as string) as object
-    video.Streams.Clear()
-    if (Left(LCase(video.id), 4) = "http") then
-        url = video.id
+    video["Streams"].Clear()
+    if (Left(LCase(video["ID"]), 4) = "http") then
+        url = video["ID"]
     else
-        url = "http://www.youtube.com/get_video_info?hl=en&el=detailpage&video_id=" + video.id
+        url = "http://www.youtube.com/get_video_info?hl=en&el=detailpage&video_id=" + video["ID"]
     end if
     htmlString = ""
     port = CreateObject("roMessagePort")
@@ -807,48 +815,47 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
                     ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
                     if (pair.itag = "18") then
                         ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
-                        video.Streams.Push({url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag})
+                        video["Streams"].Push({url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag})
                     else if (pair.itag = "22") then
                         ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
-                        video.Streams.Push({url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag})
+                        video["Streams"].Push({url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag})
                     else if (pair.itag = "37") then
                         ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
-                        video.Streams.Push({url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag })
+                        video["Streams"].Push({url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag })
                     end if
                 end if
             end for
-            if (video.Streams.Count() > 0) then
-                video.Live          = false
-                video.StreamFormat  = "mp4"
-                'video["PlayStart"] = 0
+            if (video["Streams"].Count() > 0) then
+                video["Live"]          = false
+                video["StreamFormat"]  = "mp4"
             end if
         else
             hlsUrl = CreateObject("roRegex", "hlsvp=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
             if (urlEncodedFmtStreamMap.Count() > 1) then
                 urlDecoded = ut.Unescape(ut.Unescape(ut.Unescape(hlsUrl[1])))
                 'print "Found hlsVP: " ; urlDecoded
-                video.Streams.Clear()
-                video.Live              = true
+                video["Streams"].Clear()
+                video["Live"]              = true
                 ' Set the PlayStart sufficiently large so it starts at 'Live' position
                 video["PlayStart"]        = 500000
-                video.StreamFormat      = "hls"
-                'video.SwitchingStrategy = "unaligned-segments"
-                video.SwitchingStrategy = "minimum-adaptation"
-                video.Streams.Push({url: urlDecoded, bitrate: 0, quality: false, contentid: -1})
+                video["StreamFormat"]      = "hls"
+                'video["SwitchingStrategy"] = "unaligned-segments"
+                video["SwitchingStrategy"] = "minimum-adaptation"
+                video["Streams"].Push({url: urlDecoded, bitrate: 0, quality: false, contentid: -1})
             end if
 
         end if
     else
         print ("Nothing in urlEncodedFmtStreamMap")
     end if
-    return video.Streams
+    return video["Streams"]
 end function
 
 
 Function video_get_qualities(video as Object) As Integer
 
     getMP4Url(video)
-    if (video.Streams.Count() > 0) then
+    if (video["Streams"].Count() > 0) then
         return 0
     end if
     problem = ShowDialogNoButton("", "Having trouble finding a Roku-compatible stream...")
@@ -856,3 +863,92 @@ Function video_get_qualities(video as Object) As Integer
     problem.Close()
     return -1
 End Function
+
+'********************************************************************
+' Shows Users Video History
+'********************************************************************
+Sub ShowHistory_impl()
+    m.DisplayVideoListFromMetadataList(m.history, "History", invalid, invalid, invalid)
+End Sub
+
+'********************************************************************
+' Adds Video to History
+' Store more data, but less items 5.
+' This makes it easier to view history videos, without querying YouTube for information
+' It also allows us to use the history list for the LAN Videos feature
+'********************************************************************
+Sub AddHistory_impl(video as Object)
+    if ( islist(m.history) = true ) then
+        ' If the item already exists in the list, move it to the front
+        j = 0
+        k = -1
+        for each vid in m.history
+            if ( vid["ID"] = video["ID"] ) then
+                k = j
+                exit for
+            end if
+            j = j + 1
+        end for
+
+        if ( k <> -1 ) then
+            m.history.delete(k)
+        end If
+
+    end if
+
+    ' Add the video to the beginning of the history list
+    m.history.Unshift(video)
+
+    'Is it safe to assume that 5 items will be less than 16KB? Need to find how to check array size in bytes in brightscript
+    while(m.history.Count() > 5)
+        ' Remove the last item in the list
+        m.history.Pop()
+    end while
+
+    ' Don't write the streams list to the registry
+    tempStreams = video["Streams"]
+    video["Streams"].Clear()
+
+    ' Make sure all the existing history items' Streams array is cleared
+    ' and all of the descriptions are truncated before storing to the registry
+    descs = {}
+    for each vid in m.history
+        vid["Streams"].Clear()
+        descs[vid["ID"]] = vid["Description"]
+
+        if ( Len(descs[vid["ID"]]) > 50 ) then
+            ' Truncate the description field for storing in the registry
+            vid["Description"] = Left(descs[vid["ID"]], 50) + "..."
+        end if
+    end for
+
+    historyString = m.regexNewline.ReplaceAll( SimpleJSONArray(m.history), "")
+    m.historyLen = Len(historyString)
+    ' print("**** History string len: " + tostr(m.historyLen) + "****")
+    RegWrite("videos", historyString, "history")
+    video["Streams"] = tempStreams
+    ' Load the non-truncated descriptions
+    for each vid in m.history
+        vid["Description"] = descs[vid["ID"]]
+    end for
+End Sub
+
+'********************************************************************
+' Queries YouTube for more details on a video
+' Currently unused, but could be levied for the reddit channel.
+'********************************************************************
+'Function GetVideoDetails_impl(theVideo as Object) As Object
+'    api = "videos/" + tostr(theVideo["ID"]) + "?v=2"
+'    xml = m.ExecServerAPI(api, invalid)["xml"]
+'    if (isxmlelement(xml)) then
+'        video = m.newVideoFromXML(xml)
+'        videos = CreateObject("roArray", 1, true)
+'        videos.Push(video)
+'        metadata = GetVideoMetaData(videos)
+'        if (metadata <> invalid AND metadata.Count() > 0) then
+'            metadata[0].["ID"] = theVideo["ID"]
+'            theVideo = metadata[0]
+'        end if
+'    end if
+'    return theVideo
+'End Function

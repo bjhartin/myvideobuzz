@@ -9,19 +9,25 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/icon_key.jpg"
         },
         {
-            ShortDescriptionLine1:"About",
-            ShortDescriptionLine2:"About the channel",
-            HDPosterUrl:"pkg:/images/icon_barcode.jpg",
-            SDPosterUrl:"pkg:/images/icon_barcode.jpg"
+            ShortDescriptionLine1:"Clear History",
+            ShortDescriptionLine2:"Clear your Video History - Current Size: " + tostr(m.historyLen) + " bytes",
+            HDPosterUrl:"pkg:/images/ClearHistory.jpg",
+            SDPosterUrl:"pkg:/images/ClearHistory.jpg"
         },
         {
             ShortDescriptionLine1:"Reddit",
             ShortDescriptionLine2:"Settings for the reddit channel.",
             HDPosterUrl:"pkg:/images/reddit_beta.jpg",
             SDPosterUrl:"pkg:/images/reddit_beta.jpg"
+        },
+        {
+            ShortDescriptionLine1:"About",
+            ShortDescriptionLine2:"About the channel",
+            HDPosterUrl:"pkg:/images/icon_barcode.jpg",
+            SDPosterUrl:"pkg:/images/icon_barcode.jpg"
         }
     ]
-    onselect = [0, m, "AddAccount", "About", "RedditSettings"]
+    onselect = [0, m, "AddAccount", "ClearHistory", "RedditSettings", "About"]
 
     uitkDoPosterMenu(settingmenu, screen, onselect)
 End Sub
@@ -91,6 +97,12 @@ Sub youtube_about()
     end while
 End Sub
 
+Sub ClearHistory_impl()
+    RegDelete("videos", "history")
+    m.history.Clear()
+    m.historyLen = 0
+    ShowErrorDialog("Your video history has been cleared.", "Clear History")
+End Sub
 
 Function GetFeedXML(plurl As String) As Dynamic
         http = NewHttp(plurl)
