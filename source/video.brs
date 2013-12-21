@@ -831,7 +831,7 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
             end if
         else
             hlsUrl = CreateObject("roRegex", "hlsvp=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
-            if (urlEncodedFmtStreamMap.Count() > 1) then
+            if (hlsUrl.Count() > 1) then
                 urlDecoded = ut.Unescape(ut.Unescape(ut.Unescape(hlsUrl[1])))
                 'print "Found hlsVP: " ; urlDecoded
                 video["Streams"].Clear()

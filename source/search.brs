@@ -38,6 +38,8 @@ Sub youtube_search()
                     query = query + "&orderby=" + m.searchSort
                     prompt = prompt + Chr(10) + "Sort: " + GetSortText(m.searchSort)
                 end if
+                ' Don't include items that require purchase to watch, since we don't have a way to pay for them!
+                query = query + "&paid-content=false"
                 dialog = ShowPleaseWait("Please wait", prompt)
                 xml = m.ExecServerAPI(query, invalid)["xml"]
                 if (not(isxmlelement(xml))) then
