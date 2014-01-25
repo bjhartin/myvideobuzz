@@ -387,7 +387,11 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
     for each record in xmlList
         ''printAny(0, "xmlList:", record)
         category        = CreateObject("roAssociativeArray")
-        category.title  = record.GetNamedElements("title").GetText()
+        if (record.GetNamedElements("yt:username").Count() > 0) then
+            category.title = record.GetNamedElements("yt:username").GetAttributes()["display"]
+        else
+            category.title = record.GetNamedElements("title").GetText()
+        end if
         category.link   = validstr(record.content@src)
 
         if (record.GetNamedElements("yt:unreadCount").Count() > 0) then

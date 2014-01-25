@@ -86,9 +86,25 @@ Sub initTheme()
     theme.OverhangLogoSD  = "pkg:/images/Overhang_Logo_SD.png"
 
     theme.OverhangOffsetHD_X = "125"
-    theme.OverhangOffsetHD_Y = "35"
+    theme.OverhangOffsetHD_Y = "25"
     theme.OverhangSliceHD = "pkg:/images/Overhang_Background_HD.png"
     theme.OverhangLogoHD  = "pkg:/images/Overhang_Logo_HD.png"
+    theme.BackgroundColor = "#232B30"
+
+    textColor = "#B7DFF8"
+    theme.ListItemText              = textColor
+    theme.ListItemHighlightText     = textColor
+    theme.PosterScreenLine1Text     = textColor
+    theme.PosterScreenLine2Text     = textColor
+    theme.EpisodeSynopsisText       = textColor
+    theme.ParagraphBodyText         = textColor
+    theme.ParagraphHeaderText       = textColor
+    theme.SpringboardTitleText      = textColor
+    theme.SpringboardRuntimeColor   = textColor
+    theme.SpringboardGenreColor     = textColor
+    theme.SpringboardSynopsisColor  = textColor
+
+    theme.FilterBannerActiveColor   = textColor
 
     app.SetTheme(theme)
 End Sub
