@@ -11,8 +11,8 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"Clear History",
             ShortDescriptionLine2:"Clear your Video History - Current Size: " + tostr(m.historyLen) + " bytes",
-            HDPosterUrl:"pkg:/images/ClearHistory.jpg",
-            SDPosterUrl:"pkg:/images/ClearHistory.jpg"
+            HDPosterUrl:"pkg:/images/ClearHistory.png",
+            SDPosterUrl:"pkg:/images/ClearHistory.png"
         },
         {
             ShortDescriptionLine1:"Reddit",
@@ -23,8 +23,8 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"About",
             ShortDescriptionLine2:"About the channel",
-            HDPosterUrl:"pkg:/images/icon_barcode.jpg",
-            SDPosterUrl:"pkg:/images/icon_barcode.jpg"
+            HDPosterUrl:"pkg:/images/About.jpg",
+            SDPosterUrl:"pkg:/images/About.jpg"
         }
     ]
     onselect = [0, m, "AddAccount", "ClearHistory", "RedditSettings", "About"]

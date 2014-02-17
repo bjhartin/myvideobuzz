@@ -42,7 +42,7 @@ Sub ShowHomeScreen()
         menudata.Push({ShortDescriptionLine1:"My Subscriptions", FeedURL:"users/" + ytusername + "/subscriptions?v=2&max-results=50", Category:"true", ShortDescriptionLine2:"Browse your Subscriptions", HDPosterUrl:"pkg:/images/YourSubscriptions.jpg", SDPosterUrl:"pkg:/images/YourSubscriptions.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Favorites", FeedURL:"users/" + ytusername + "/favorites?v=2&max-results=50", Category:"false", ShortDescriptionLine2:"Browse your favorite videos", HDPosterUrl:"pkg:/images/YourFavorites.jpg", SDPosterUrl:"pkg:/images/YourFavorites.jpg"})
     end if
-    menudata.Push({ShortDescriptionLine1:"History", OnClick:"ShowHistory", ShortDescriptionLine2:"View your history",  HDPosterUrl:"pkg:/images/History.jpg", SDPosterUrl:"pkg:/images/History.jpg"})
+    menudata.Push({ShortDescriptionLine1:"History", OnClick:"ShowHistory", ShortDescriptionLine2:"View your history",  HDPosterUrl:"pkg:/images/History.png", SDPosterUrl:"pkg:/images/History.png"})
     menudata.Push({ShortDescriptionLine1:"Search", OnClick:"SearchYoutube", ShortDescriptionLine2:"Search YouTube for videos",  HDPosterUrl:"pkg:/images/Search.jpg", SDPosterUrl:"pkg:/images/Search.jpg"})
     menudata.Push({ShortDescriptionLine1:"Local Network", Custom: true, ViewFunc: CheckForLANVideos, Category:"false", ShortDescriptionLine2:"View recent LAN videos", HDPosterUrl:"pkg:/images/LAN.jpg", SDPosterUrl:"pkg:/images/LAN.jpg"})
     if (RegRead("enabled", "reddit") = invalid) then
@@ -105,6 +105,8 @@ Sub initTheme()
     theme.SpringboardSynopsisColor  = textColor
 
     theme.FilterBannerActiveColor   = textColor
+    theme.ButtonMenuNormalText   = textColor
+    theme.ButtonHighlightColor   = textColor
 
     app.SetTheme(theme)
 End Sub
