@@ -227,13 +227,30 @@ End Function
 Function NewRedditVideo(jsonObject As Object) As Object
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
-    idMatches = LoadYouTube().ytIDRegex.Match( URLDecode( jsonObject.data.url) )
+    decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
+    idMatches = LoadYouTube().ytIDRegex.Match( decodedUrl )
     id = invalid
-    if (idMatches.Count() > 1) then
+    if ( idMatches.Count() > 1 ) then
+        ' Default the PlayStart, since it is read later on
+        video["PlayStart"] = 0
+        ytUrl = NewHttp( decodedUrl )
+        tParam = ytUrl.GetParams( "urlParams" ).get( "t" )
+        if ( tParam <> invalid ) then
+            ' This code gets the timestamp from the normal url param (?t or &t)
+            if ( strtoi( tParam ) <> invalid ) then
+                video["PlayStart"]  = strtoi( tParam )
+            end if
+        else if ( ytUrl.anchor <> invalid AND ytUrl.anchor.InStr("t=") <> -1 ) then
+            ' This set of code gets the timestamp from the anchor param (#t)
+            playStart = ytUrl.anchor.Mid( ytUrl.anchor.InStr( "t=" ) + 2 )
+            if ( strtoi( playStart ) <> invalid ) then
+                video["PlayStart"]  = strtoi( playStart )
+            end if
+        end if
         id = idMatches[1]
     end if
     video["ID"]            = id
-    video["Title"]         = Left(htmlDecode( jsonObject.data.title ), 100)
+    video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
     video["Category"]      = "/r/" + jsonObject.data.subreddit
     desc = ""
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
@@ -284,7 +301,7 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["HDPosterUrl"]            = video["Thumb"]
         meta["StreamFormat"]           = "mp4"
         meta["Streams"]                = []
-        meta["PlayStart"]              = 0
+        meta["PlayStart"]              = video["PlayStart"]
         metadata.Push(meta)
     end for
 

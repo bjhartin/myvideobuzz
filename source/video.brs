@@ -97,7 +97,7 @@ Function InitYouTube() As Object
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
-    this.ytIDRegex = CreateObject("roRegex", ".*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#\&\?]*).*", "")
+    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "")
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
 
     return this
