@@ -58,7 +58,7 @@ Function InitYouTube() As Object
     this.VideoDetails = VideoDetails_impl
     this.newVideoListFromXML = youtube_new_video_list
     this.newVideoFromXML = youtube_new_video
-    this.ReturnVideoList = youtube_return_video
+    this.ReturnVideoList = ReturnVideoList_impl
 
     'Categories
     this.CategoriesListFromXML  = CategoriesListFromXML_impl
@@ -104,7 +104,7 @@ Function InitYouTube() As Object
 End Function
 
 
-Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic) As Object
+Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
     'oa = Oauth()
 
     if (username = invalid) then
@@ -148,6 +148,11 @@ Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic) A
 
     http.method = method
     http.AddParam("v","2","urlParams")
+    if ( islist( extraParams ) ) then
+         for each e in extraParams
+            http.AddParam( e.name, e.value )
+         next
+    end if
     'oa.sign(http,true)
 
     'print "----------------------------------"
@@ -214,7 +219,7 @@ End Sub
 ' YouTube User Playlists
 '********************************************************************
 Sub BrowseUserPlaylists_impl(username As String, userID As String)
-    m.FetchVideoList("users/" + userID + "/playlists?max-results=50", username + "'s Playlists", invalid, true)
+    m.FetchVideoList("users/" + userID + "/playlists?max-results=50", username + "'s Playlists", invalid, {isPlaylist: true})
 End Sub
 
 '********************************************************************
@@ -228,7 +233,7 @@ End Sub
 '********************************************************************
 ' YouTube Poster/Video List Utils
 '********************************************************************
-Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, categories=false, message = "Loading..." as String)
+Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, categoryData = invalid as Dynamic, message = "Loading..." as String)
 
     'fields = m.FieldsToInclude
     'if Instr(0, APIRequest, "?") = 0 then
@@ -250,10 +255,10 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
 
     ' Everything is OK, display the list
     xml = response.xml
-    if (categories = true) then
-        categories = m.CategoriesListFromXML(xml.entry)
+    if (categoryData <> invalid) then
+        categoryData.categories = m.CategoriesListFromXML(xml.entry)
         'PrintAny(0, "categoryList:", categories)
-        m.DisplayVideoListFromVideoList([], title, xml.link, screen, categories)
+        m.DisplayVideoListFromVideoList([], title, xml.link, screen, categoryData)
     else
         videos = m.newVideoListFromXML(xml.entry)
         m.DisplayVideoListFromVideoList(videos, title, xml.link, screen, invalid)
@@ -261,8 +266,8 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
 End Sub
 
 
-Function youtube_return_video(APIRequest As Dynamic, title As String, username As Dynamic)
-    xml = m.ExecServerAPI(APIRequest, username)["xml"]
+Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
+    xml = m.ExecServerAPI(APIRequest, username, additionalParams)["xml"]
     if (not(isxmlelement(xml))) then
         ShowConnectionFailed()
         return []
@@ -284,40 +289,45 @@ Function youtube_return_video(APIRequest As Dynamic, title As String, username A
     return metadata
 End Function
 
-Sub DisplayVideoListFromVideoList_impl(videos As Object, title As String, links=invalid, screen = invalid, categories = invalid, metadataFunc = GetVideoMetaData as Function)
-    if (categories = invalid) then
+Sub DisplayVideoListFromVideoList_impl(videos As Object, title As String, links=invalid, screen = invalid, categoryData = invalid as Dynamic, metadataFunc = GetVideoMetaData as Function)
+    if (categoryData = invalid) then
         metadata = metadataFunc(videos)
     else
         metadata = videos
     end if
-    m.DisplayVideoListFromMetadataList(metadata, title, links, screen, categories)
+    m.DisplayVideoListFromMetadataList(metadata, title, links, screen, categoryData)
 End Sub
 
-Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, links=invalid, screen = invalid, categories = invalid)
+Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, links=invalid, screen = invalid, categoryData = invalid)
     if (screen = invalid) then
         screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
         screen.showMessage("Loading...")
     end if
     m.CurrentPageTitle = title
 
-    if (categories <> invalid) then
+    if (categoryData <> invalid) then
         categoryList = CreateObject("roArray", 100, true)
-        for each category in categories
+        for each category in categoryData.categories
             categoryList.Push(category.title)
         next
 
-        oncontent_callback = [categories, m,
-            function(categories, youtube, set_idx)
+        oncontent_callback = [categoryData.categories, m,
+            function(categories, youtube, set_idx, reverseSort = false)
                 'PrintAny(0, "category:", categories[set_idx])
                 if (youtube <> invalid AND categories.Count() > 0) then
-                    return youtube.ReturnVideoList(categories[set_idx].link, youtube.CurrentPageTitle, invalid)
+                    additionalParams = invalid
+                    if ( reverseSort ) then
+                        additionalParams = []
+                        additionalParams.push( { name: "orderby", value: "reversedPosition" } )
+                    end if
+                    return youtube.ReturnVideoList(categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams)
                 else
                     return []
                 end if
             end function]
 
 
-        onclick_callback = [categories, m,
+        onclick_callback = [categoryData.categories, m,
             function(categories, youtube, video, category_idx, set_idx)
                 if (video[set_idx]["action"] <> invalid) then
                     return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid) }
@@ -326,7 +336,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                     return { isContentList: false, content: video}
                 end if
             end function]
-        uitkDoCategoryMenu(categoryList, screen, oncontent_callback, onclick_callback, onplay_callback)
+        uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, categoryData.isPlaylist )
     else if (metadata.Count() > 0) then
         for each link in links
             if (type(link) = "roXMLElement") then

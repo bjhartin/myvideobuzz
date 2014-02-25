@@ -3,6 +3,7 @@
 '
 '    Display "menu" items in a Poster Screen.
 '
+Library "v30/bslCore.brs"
 Function uitkPreShowPosterMenu(ListStyle="flat-category" as String, breadA = "Home", breadB = invalid) As Object
     port=CreateObject("roMessagePort")
     screen = CreateObject("roPosterScreen")
@@ -85,7 +86,7 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
                 idx% = msg.GetIndex()
             else if (msg.isRemoteKeyPressed()) then
                 ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
-                if (onplay_func <> invalid AND msg.GetIndex() = 13) then
+                if (onplay_func <> invalid AND msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED) then
                     onplay_func(posterdata[idx%])
                 end if
             end if
@@ -173,17 +174,17 @@ Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Intege
 End Function
 
 
-Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, onclick_callback = invalid, onplay_func = invalid) As Integer
+Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, onclick_callback = invalid, onplay_func = invalid, isPlaylist = false) As Integer
     'Set current category to first in list
     category_idx = 0
     contentlist = []
-
+    reversePlaylist = false
     screen.SetListNames(categoryList)
     contentdata1 = content_callback[0]
     contentdata2 = content_callback[1]
     content_f = content_callback[2]
 
-    contentlist = content_f(contentdata1, contentdata2, 0)
+    contentlist = content_f( contentdata1, contentdata2, 0, reversePlaylist )
 
     if (contentlist.Count() = 0) then
         screen.SetContentList([])
@@ -207,10 +208,12 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
     awaiting_timeout = false
     ' Default the multicast timer
     multicast_time.Mark()
+    buttonCodes = bslUniversalControlEventCodes()
     while (true)
         msg = wait(500, screen.GetMessagePort())
         if (type(msg) = "roPosterScreenEvent") then
             if (msg.isListFocused()) then
+                ' This event occurs when the category header is selected
                 category_idx = msg.GetIndex()
                 contentdata1 = content_callback[0]
                 contentdata2 = content_callback[1]
@@ -220,6 +223,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 ' Mark the time that the category was selected
                 category_time.Mark()
             else if (msg.isListItemSelected()) then
+                ' This event occurs when a video is selected with the "Ok" button
                 userdata1 = onclick_callback[0]
                 userdata2 = onclick_callback[1]
                 content_f = onclick_callback[2]
@@ -238,17 +242,34 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                             screen.SetFocusedListItem(0)
                         end if
                         screen.SetContentList(contentlist)
+                        screen.Show()
                         'screen.SetFocusedListItem(msg.GetIndex())
                     end if
                 end if
             else if (msg.isListItemFocused()) then
+                ' This event occurs when the user changes the selection of a video item
                 idx% = msg.GetIndex()
             else if (msg.isScreenClosed()) then
                 return -1
             else if (msg.isRemoteKeyPressed()) then
                 ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
-                if (onplay_func <> invalid AND msg.GetIndex() = 13) then
+                if (onplay_func <> invalid AND msg.GetIndex() = buttonCodes.BUTTON_PLAY_PRESSED) then
                     onplay_func(contentlist[idx%])
+                else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
+                    ' Temporary code to allow reversing playlists, plan to show a menu to toggle it on/off
+                    reversePlaylist = NOT(reversePlaylist)
+                    ' This calls the content callback
+                    contentlist = content_callback[2](content_callback[0], content_callback[1], category_idx, reversePlaylist)
+                    if (contentlist.Count() = 0) then
+                        screen.SetContentList([])
+                        screen.clearmessage()
+                        screen.showmessage("No viewable content in this section")
+                    else
+                        screen.SetContentList(contentlist)
+                        screen.clearmessage()
+                        screen.SetFocusedListItem(0)
+                        screen.Show()
+                    end if
                 end if
             end if
         else if (msg = invalid) then
@@ -257,7 +278,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
             ' reached their desired category for the correct video list to load (could be painful with a lot of categories)
             if (awaiting_timeout = true AND category_time.TotalMilliseconds() > 900) then
                 awaiting_timeout = false
-                contentlist = content_f(contentdata1, contentdata2, category_idx)
+                ' This calls the content callback
+                contentlist = content_f(contentdata1, contentdata2, category_idx, reversePlaylist)
                 if (contentlist.Count() = 0) then
                     screen.SetContentList([])
                     screen.ShowMessage("No viewable content in this section")
