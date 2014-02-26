@@ -23,17 +23,8 @@ Sub ShowHomeScreen()
     end if
 
     Init()
-'    oa = Oauth()
-    youtube = LoadYouTube()
 
-  '  if doRegistration() <> 0 then
-   '     reason = "unknown"
-    '    if not oa.linked() then reason = "unlinked"
-     '   print "Main: exit due to error in registration, reason: "; reason
-        'exit the app gently so that the screen doesn't flash to black
-      '  sleep(25)
-       ' return
-    'end if
+    youtube = LoadYouTube()
 
     menudata=[]
      if (ytusername<>invalid) and (isnonemptystr(ytusername)) then

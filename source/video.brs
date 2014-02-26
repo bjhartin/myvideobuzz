@@ -8,9 +8,6 @@ Function InitYouTube() As Object
     ' constructor
     this = CreateObject("roAssociativeArray")
     this.device_id = CreateObject("roDeviceInfo").GetDeviceUniqueId()
-    this.oauth_prefix = "https://www.google.com/accounts"
-    this.link_prefix = "http://roku.toasterdesigns.net"
-    this.devKey = "AI39si7xeR7W6rGgB9pZ3xBKHZnPVlBBdU3HZnhFXg8g7_3V8rplFNAT6rx_SVRzLRPhhNN-JARUjVg4JKGI5xjO00lK_Omb7g"
     this.protocol = "http"
     this.scope = this.protocol + "://gdata.youtube.com"
     this.prefix = this.scope + "/feeds/api"
@@ -142,9 +139,6 @@ Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, e
     else
         http = NewHttp(m.prefix + "/" + username + url_stub)
     end if
-
-    'if not headers.DoesExist("X-GData-Key") then headers.AddReplace("X-GData-Key", "key="+m.devKey)
-    'if not headers.DoesExist("GData-Version") then headers.AddReplace("GData-Version", "2")
 
     http.method = method
     http.AddParam("v","2","urlParams")
