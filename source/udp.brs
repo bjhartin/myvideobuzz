@@ -27,6 +27,29 @@ Sub MulticastInit(youtube as Object)
     youtube.udp_created = youtube.dateObj.AsSeconds()
     youtube.udp_socket = udp
     youtube.mp_socket = msgPort
+
+    dialMsgPort = createobject("roMessagePort")
+    DIAL_udp = createobject("roDatagramSocket")
+    DIAL_udp.setMessagePort(dialMsgPort)
+    DIAL_addr = createobject("roSocketAddress")
+    DIAL_addr.setPort(1900)
+    DIAL_addr.SetHostName("239.255.255.250")
+    DIAL_udp.setAddress(DIAL_addr)
+    if (not(DIAL_udp.setSendToAddress(DIAL_addr))) then
+        print ("Failed to set send to address for DIAL UDP socket")
+        return
+    end if
+    ' Only local subnet
+    DIAL_udp.SetMulticastTTL(1)
+    if (not(DIAL_udp.SetMulticastLoop(false))) then
+        print("Failed to disable multicast loop")
+    end if
+    ' Join the multicast group
+    DIAL_udp.joinGroup(DIAL_addr)
+    DIAL_udp.NotifyReadable(true)
+    DIAL_udp.NotifyWritable(false)
+    youtube.DIAL_socket = DIAL_udp
+    youtube.mp_DIAL = dialMsgPort
 End Sub
 
 '********************************************************************
@@ -42,6 +65,8 @@ Sub HandleStaleMessagePort( youtube as Dynamic )
     if ( ( youtube.dateObj.AsSeconds() - youtube.udp_created ) > 3600 ) then
         youtube.udp_socket.Close()
         youtube.mp_socket = invalid
+        youtube.DIAL_socket.Close()
+        youtube.mp_DIAL = invalid
         MulticastInit( youtube )
     end if
 End Sub
@@ -91,10 +116,54 @@ Sub CheckForMCast()
             youtube.udp_socket.SendStr("1:" +  json)
         end if
     end if
+    
+    CheckForDIALMCast()
+
     ' Determine if the udp socket and message port need to be re-initialized
     HandleStaleMessagePort( youtube )
 End Sub
 
+Sub CheckForDIALMCast()
+    youtube = LoadYouTube()
+    if (youtube.mp_DIAL = invalid OR youtube.DIAL_socket = invalid) then
+        print("CheckForDIALMCast: Invalid Message Port or UDP Socket")
+        return
+    end if
+
+    message = youtube.mp_DIAL.GetMessage()
+    ' Flag to track if a response is necessary -- we only want to respond once,
+    ' even if we find multiple queries available on the socket
+    mvbRespond = false
+    sendToAddress = invalid
+    while (message <> invalid)
+        if (type(message) = "roSocketEvent") then
+            data = youtube.DIAL_socket.receiveStr(4096) ' max 4096 characters
+
+            ' Replace newlines
+            print("Received " + data)
+            if ( data.instr( 0, "M-SEARCH" ) AND ( data.instr( 0, "urn:dial-multiscreen-org:service:dial:1" ) ) ) then
+
+
+                if ( NOT( youtube.dial_server_active ) ) then
+                    'DatagramPacket newData = new DatagramPacket( resp.getBytes(), resp.length(), data.getAddress(), data.getPort())
+                    sendToAddress = youtube.DIAL_socket.GetReceivedFromAddress()
+                    's.send(newData)
+                    mvbRespond = true
+                end if
+            end if
+        end if
+        ' This effectively drains the receive queue
+        message = wait( 10, youtube.mp_DIAL )
+    end while
+    if ( mvbRespond = true AND sendToAddress <> invalid ) then
+        resp = getResponseString()
+        print("Responding with: " + resp)
+        youtube.DIAL_socket.setSendToAddress( sendToAddress )
+        youtube.DIAL_socket.SendStr("1:" +  resp)
+    end if
+    ' Determine if the udp socket and message port need to be re-initialized
+    HandleStaleMessagePort( youtube )
+End Sub
 '********************************************************************
 ' Determines if there are available videos on the LAN to continue watching
 ' Multicasts a query for other listening devices to respond with their currently-active video
@@ -148,3 +217,28 @@ Sub CheckForLANVideos(youtube as Object)
     dialog.Close()
     youtube.DisplayVideoListFromMetadataList(jsonMetadata, "LAN Videos", invalid, invalid, invalid)
 End Sub
+
+Function GetDIALPort() as String
+    return "23456"
+End Function
+
+Function getDeviceString() as String
+    return ("<?xml version=" + Quote() + "1.0" + Quote() + "?><root xmlns=" + Quote() +"urn:schemas-upnp-org:device-1-0" + Quote() + "><specVersion><major>1</major><minor>0</minor></specVersion><URLBase>http://" + GetRokuLocalIP() + ":" + GetDIALPort() + "</URLBase><device><deviceType>urn:dial-multiscreen-org:device:dial:1</deviceType><friendlyName>VideoBuzz</friendlyName><manufacturer>Protuhj</manufacturer><modelName>Roku</modelName><UDN>uuid:abd55251-466f-473b-893d-34507dba84ef</UDN><iconList><icon><mimetype>image/png</mimetype><width>98</width><height>55</height><depth>32</depth><url>/setup/icon.png</url></icon></iconList><serviceList><service><serviceType>urn:dial-multiscreen-org:service:dial:1</serviceType><serviceId>urn:dial-multiscreen-org:serviceId:dial</serviceId><controlURL>/ssdp/notfound</controlURL><eventSubURL>/ssdp/notfound</eventSubURL><SCPDURL>/ssdp/notfound</SCPDURL></service></serviceList></device></root>")
+End Function
+
+Function getResponseString() as String
+
+    return ( "HTTP/1.1 200 OK\nLOCATION: http://" + GetRokuLocalIP() + ":" + GetDIALPort() + "/dd.xml\nCACHE-CONTROL: max-age=1800\nEXT:\nCONFIGID.UPNP.ORG: 8008\nBOOTID.UPNP.ORG: 8008\nST: urn:dial-multiscreen-org:service:dial:1\nUSN: uuid:abd55251-466f-473b-893d-34507dba84ef\n\n" )
+End Function
+
+Function GetRokuLocalIP() As String
+    deviceInfo = CreateObject("roDeviceInfo")
+    ipAddresses = deviceInfo .GetIPAddrs()
+    For Each key In ipAddresses
+        ipAddress = ipAddresses[key]
+        If ipAddress <> invalid And ipAddress.Len() > 0 Then
+            Return ipAddress
+        End If
+    Next
+    Return ""
+End Function

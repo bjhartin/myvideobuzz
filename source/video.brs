@@ -91,6 +91,11 @@ Function InitYouTube() As Object
     this.udp_socket = invalid
     this.mp_socket  = invalid
     this.udp_created = 0
+    
+    ' DIAL related members
+    this.DIAL_socket = invalid
+    this.mp_DIAL= invalid
+    this.dial_server_active = false
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
