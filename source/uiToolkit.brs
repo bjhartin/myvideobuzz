@@ -86,8 +86,13 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
                 idx% = msg.GetIndex()
             else if (msg.isRemoteKeyPressed()) then
                 ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
-                if (onplay_func <> invalid AND msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED) then
-                    onplay_func(posterdata[idx%])
+                if (onplay_func <> invalid ) then
+                    if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED ) then
+                        onplay_func( posterdata[idx%] )
+                    else if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_INFO_PRESSED ) then
+                        while ( VListOptionDialog( false ) = 1 )
+                        end while
+                    end if
                 end if
             end if
         else if (msg = invalid) then
@@ -256,9 +261,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 if (onplay_func <> invalid AND msg.GetIndex() = buttonCodes.BUTTON_PLAY_PRESSED) then
                     onplay_func(contentlist[idx%])
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
-                    ' Temporary code to allow reversing playlists, plan to show a menu to toggle it on/off
                     reversePlaylist = m.youtube.reversed_playlist
-                    while ( VListOptionDialog() = 1 )
+                    while ( VListOptionDialog( isPlaylist ) = 1 )
                     end while
                     if ( reversePlaylist <> m.youtube.reversed_playlist ) then
                         ' This calls the content callback
@@ -312,42 +316,46 @@ Sub uitkDoMessage(message, screen)
     end while
 End Sub
 
-Function VListOptionDialog() as Integer
+Function VListOptionDialog( showReverse as Boolean ) as Integer
     dialog = CreateObject( "roMessageDialog" )
     port = CreateObject( "roMessagePort" )
     dialog.SetMessagePort( port )
     dialog.SetTitle( "Playback Settings" )
     dialog.SetMenuTopLeft( true )
-    updateVListDialogText( dialog )
+    updateVListDialogText( dialog, false, showReverse )
     dialog.EnableBackButton( true )
-    dialog.addButton( 1, "Reverse Playlist Order" )
-    'dialog.addButton( 2, "Set Sleep Timer" )
-    dialog.addButton( 2, "Done")
+    if ( showReverse = true ) then
+        reverseId = 1
+        sleepId = 2
+        doneId = 3
+        dialog.addButton( reverseId, "Reverse Playlist Order" )
+    else
+        reverseId = 0
+        sleepId = 1
+        doneId = 2
+    end if
+    dialog.addButton( sleepId, "Set Sleep Timer" )
+    dialog.addButton( doneId, "Done")
     dialog.Show()
     while true
         dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
                 ' Handles the "Reverse Playlist Order" item
-                if (dlgMsg.GetIndex() = 1) then
+                if (dlgMsg.GetIndex() = reverseId) then
                     m.youtube.reversed_playlist = NOT( m.youtube.reversed_playlist )
-                    updateVListDialogText( dialog, true )
+                    updateVListDialogText( dialog, true, showReverse )
                     return 1 ' Re-open the options
                 ' This will be for the sleep timer menu
-                'else if (dlgMsg.GetIndex() = 2) then
-                '    dialog.Close()
-                '    ret = SearchDateClicked()
-                '    if (ret <> "ignore") then
-                '        m.youtube.searchDateFilter = ret
-                '        if (ret <> "") then
-                '            RegWrite("date", ret, "Search")
-                '        else
-                '            RegDelete("date", "Search")
-                '        end if
-                '        updateVListDialogText(dialog, true)
-                '    end if
-                '    return 1 ' Re-open the options
-                else if (dlgMsg.GetIndex() = 2) then
+                else if (dlgMsg.GetIndex() = sleepId) then
+                    dialog.Close()
+                    ret = SleepTimerClicked()
+                    if (ret <> 0) then
+                        m.youtube.sleep_timer = ret
+                        updateVListDialogText( dialog, true, showReverse )
+                    end if
+                    return 1 ' Re-open the options
+                else if (dlgMsg.GetIndex() = doneId) then
                     dialog.Close()
                     exit while
                 end if
@@ -368,15 +376,63 @@ Function VListOptionDialog() as Integer
     return 0
 End Function
 
-Sub updateVListDialogText(dialog as Object, isUpdate = false as Boolean)
+Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseText as Boolean )
     reversedText = "No"
+    sleepText = "Off"
     if ( m.youtube.reversed_playlist = true ) then
         reversedText = "Yes"
     end if
-    dialogText = "Playlist Reversed: " + reversedText
+    if ( m.youtube.sleep_timer <> -1 ) then
+        sleepText = get_length_as_human_readable( m.youtube.sleep_timer )
+    end if
+    dialogText = ""
+    if ( showReverseText = true ) then
+        dialogText = "Playlist Reversed: " + reversedText + chr(10)
+    end if
+    dialogText = dialogText + "Sleep Timer: " + sleepText
     if ( isUpdate = true ) then
         dialog.UpdateText( dialogText )
     else
         dialog.SetText( dialogText )
     end if
 End Sub
+
+Function SleepTimerClicked() as Integer
+    dialog = CreateObject("roMessageDialog")
+    port = CreateObject("roMessagePort")
+    dialog.SetMessagePort(port)
+    dialog.SetTitle("Sort Options")
+    dialog.EnableBackButton(true)
+    dialog.addButton(1, "Off")
+    dialog.addButton(2, "30 minutes")
+    dialog.addButton(3, "60 minutes")
+    dialog.addButton(4, "90 minutes")
+    dialog.Show()
+    retVal = 0
+    while true
+        dlgMsg = wait(2000, dialog.GetMessagePort())
+        if (type(dlgMsg) = "roMessageDialogEvent") then
+            if (dlgMsg.isButtonPressed()) then
+                if (dlgMsg.GetIndex() = 1) then
+                    retVal = -1
+                else if (dlgMsg.GetIndex() = 2) then
+                    ' 1800 seconds = 30 minutes
+                    retVal = 1800
+                else if (dlgMsg.GetIndex() = 3) then
+                    ' 3600 seconds = 60 minutes
+                    retVal = 3600
+                else if (dlgMsg.GetIndex() = 4) then
+                    ' 5400 seconds = 90 minutes
+                    retVal = 5400
+                end if
+                exit while
+            else if (dlgMsg.isScreenClosed()) then
+                exit while
+            end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
+        end if
+    end while
+    dialog.Close()
+    return retVal
+End Function

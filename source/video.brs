@@ -100,6 +100,7 @@ Function InitYouTube() As Object
     ' Should playlists be queried for their reversed order? Default is false
     this.reversed_playlist = false
 
+    this.sleep_timer = -1
     return this
 End Function
 
@@ -748,9 +749,18 @@ Function DisplayVideo(content As Object)
                 video.Close()
                 exit while
             else if (msg.isRequestFailed()) then
-                'print "play failed: "; msg.GetMessage()
+                print "play failed: " ; msg.GetMessage()
             else if (msg.isPlaybackPosition()) then
                 content["PlayStart"] = msg.GetIndex()
+                if ( yt.sleep_timer <> -1 ) then
+                    yt.sleep_timer = yt.sleep_timer - 5
+                    if ( yt.sleep_timer <= 0 ) then
+                        print( "Sleepy time" )
+                        yt.sleep_timer = -1
+                        video.Close()
+                        exit while
+                    end if
+                end if
             else if (msg.isFullResult()) then
                 content["PlayStart"] = 0
             else if (msg.isPartialResult()) then
@@ -778,13 +788,13 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
     if (Left(LCase(video["ID"]), 4) = "http") then
         url = video["ID"]
     else
-        url = "http://www.youtube.com/get_video_info?hl=en&el=detailpage&video_id=" + video["ID"]
+        url = "http://www.youtube.com/get_video_info?video_id=" + video["ID"]
     end if
     htmlString = ""
     port = CreateObject("roMessagePort")
     ut = CreateObject("roUrlTransfer")
     ut.SetPort(port)
-    ut.AddHeader("User-Agent", "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)")
+    ut.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0")
     ut.AddHeader("Cookie", loginCookie)
     ut.SetUrl(url)
     if (ut.AsyncGetToString()) then
@@ -806,6 +816,8 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
     if (urlEncodedFmtStreamMap.Count() > 1) then
         if (not(strTrim(urlEncodedFmtStreamMap[1]) = "")) then
             commaSplit = CreateObject("roRegex", "%2C", "").Split(urlEncodedFmtStreamMap [1])
+            hasHD = false
+            fullHD = false
             for each commaItem in commaSplit
                 pair = {itag: "", url: "", sig: ""}
                 ampersandSplit = CreateObject("roRegex", "%26", "").Split(commaItem)
@@ -830,15 +842,21 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
                     else if (pair.itag = "22") then
                         ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
                         video["Streams"].Push({url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag})
+                        hasHD = true
                     else if (pair.itag = "37") then
                         ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
                         video["Streams"].Push({url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag })
+                        hasHD = true
+                        fullHD = true
                     end if
                 end if
             end for
             if (video["Streams"].Count() > 0) then
                 video["Live"]          = false
                 video["StreamFormat"]  = "mp4"
+                video["HDBranded"] = hasHD
+                video["IsHD"] = hasHD
+                video["FullHD"] = fullHD
             end if
         else
             hlsUrl = CreateObject("roRegex", "hlsvp=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
@@ -851,7 +869,7 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
                 video["PlayStart"]        = 500000
                 video["StreamFormat"]      = "hls"
                 'video["SwitchingStrategy"] = "unaligned-segments"
-                video["SwitchingStrategy"] = "minimum-adaptation"
+                video["SwitchingStrategy"] = "full-adaptation"
                 video["Streams"].Push({url: urlDecoded, bitrate: 0, quality: false, contentid: -1})
             end if
 
