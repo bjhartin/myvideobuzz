@@ -758,6 +758,8 @@ Function DisplayVideo(content As Object)
                         print( "Sleepy time" )
                         yt.sleep_timer = -1
                         video.Close()
+                        ' Set the return value so that 'Play All' won't continue if the sleep timer elapses
+                        ret = 2
                         exit while
                     end if
                 end if
