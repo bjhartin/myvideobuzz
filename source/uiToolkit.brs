@@ -404,7 +404,7 @@ Function SleepTimerClicked() as Integer
     dialog = CreateObject("roMessageDialog")
     port = CreateObject("roMessagePort")
     dialog.SetMessagePort(port)
-    dialog.SetTitle("Sort Options")
+    dialog.SetTitle("Sleep Timer Settings")
     dialog.EnableBackButton(true)
     dialog.addButton(1, "Off")
     dialog.addButton(2, "30 minutes")
