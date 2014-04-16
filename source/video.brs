@@ -97,6 +97,9 @@ Function InitYouTube() As Object
     this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "")
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
 
+    ' Should playlists be queried for their reversed order? Default is false
+    this.reversed_playlist = false
+
     return this
 End Function
 
@@ -765,7 +768,7 @@ Function DisplayVideo(content As Object)
         end if
     end while
     ' Add the video to history
-    ' Add it here 
+    ' Add it here
     yt.AddHistory(content)
     return ret
 End Function

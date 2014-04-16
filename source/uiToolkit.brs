@@ -178,13 +178,13 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
     'Set current category to first in list
     category_idx = 0
     contentlist = []
-    reversePlaylist = false
-    screen.SetListNames(categoryList)
+    m.youtube.reversed_playlist = false
+    screen.SetListNames( categoryList )
     contentdata1 = content_callback[0]
     contentdata2 = content_callback[1]
     content_f = content_callback[2]
 
-    contentlist = content_f( contentdata1, contentdata2, 0, reversePlaylist )
+    contentlist = content_f( contentdata1, contentdata2, 0, m.youtube.reversed_playlist )
 
     if (contentlist.Count() = 0) then
         screen.SetContentList([])
@@ -257,18 +257,22 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                     onplay_func(contentlist[idx%])
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
                     ' Temporary code to allow reversing playlists, plan to show a menu to toggle it on/off
-                    reversePlaylist = NOT(reversePlaylist)
-                    ' This calls the content callback
-                    contentlist = content_callback[2](content_callback[0], content_callback[1], category_idx, reversePlaylist)
-                    if (contentlist.Count() = 0) then
-                        screen.SetContentList([])
-                        screen.clearmessage()
-                        screen.showmessage("No viewable content in this section")
-                    else
-                        screen.SetContentList(contentlist)
-                        screen.clearmessage()
-                        screen.SetFocusedListItem(0)
-                        screen.Show()
+                    reversePlaylist = m.youtube.reversed_playlist
+                    while ( VListOptionDialog() = 1 )
+                    end while
+                    if ( reversePlaylist <> m.youtube.reversed_playlist ) then
+                        ' This calls the content callback
+                        contentlist = content_callback[2]( content_callback[0], content_callback[1], category_idx, m.youtube.reversed_playlist )
+                        if (contentlist.Count() = 0) then
+                            screen.SetContentList([])
+                            screen.clearmessage()
+                            screen.showmessage("No viewable content in this section")
+                        else
+                            screen.SetContentList(contentlist)
+                            screen.clearmessage()
+                            screen.SetFocusedListItem(0)
+                            screen.Show()
+                        end if
                     end if
                 end if
             end if
@@ -278,8 +282,10 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
             ' reached their desired category for the correct video list to load (could be painful with a lot of categories)
             if (awaiting_timeout = true AND category_time.TotalMilliseconds() > 900) then
                 awaiting_timeout = false
+                ' Playlist changed, reset the reversed flag
+                m.youtube.reversed_playlist = false
                 ' This calls the content callback
-                contentlist = content_f(contentdata1, contentdata2, category_idx, reversePlaylist)
+                contentlist = content_f( contentdata1, contentdata2, category_idx, m.youtube.reversed_playlist )
                 if (contentlist.Count() = 0) then
                     screen.SetContentList([])
                     screen.ShowMessage("No viewable content in this section")
@@ -304,4 +310,73 @@ Sub uitkDoMessage(message, screen)
             return
         end if
     end while
+End Sub
+
+Function VListOptionDialog() as Integer
+    dialog = CreateObject( "roMessageDialog" )
+    port = CreateObject( "roMessagePort" )
+    dialog.SetMessagePort( port )
+    dialog.SetTitle( "Playback Settings" )
+    dialog.SetMenuTopLeft( true )
+    updateVListDialogText( dialog )
+    dialog.EnableBackButton( true )
+    dialog.addButton( 1, "Reverse Playlist Order" )
+    'dialog.addButton( 2, "Set Sleep Timer" )
+    dialog.addButton( 2, "Done")
+    dialog.Show()
+    while true
+        dlgMsg = wait(2000, dialog.GetMessagePort())
+        if (type(dlgMsg) = "roMessageDialogEvent") then
+            if (dlgMsg.isButtonPressed()) then
+                ' Handles the "Reverse Playlist Order" item
+                if (dlgMsg.GetIndex() = 1) then
+                    m.youtube.reversed_playlist = NOT( m.youtube.reversed_playlist )
+                    updateVListDialogText( dialog, true )
+                    return 1 ' Re-open the options
+                ' This will be for the sleep timer menu
+                'else if (dlgMsg.GetIndex() = 2) then
+                '    dialog.Close()
+                '    ret = SearchDateClicked()
+                '    if (ret <> "ignore") then
+                '        m.youtube.searchDateFilter = ret
+                '        if (ret <> "") then
+                '            RegWrite("date", ret, "Search")
+                '        else
+                '            RegDelete("date", "Search")
+                '        end if
+                '        updateVListDialogText(dialog, true)
+                '    end if
+                '    return 1 ' Re-open the options
+                else if (dlgMsg.GetIndex() = 2) then
+                    dialog.Close()
+                    exit while
+                end if
+            else if (dlgMsg.isScreenClosed()) then
+                dialog.Close()
+                exit while
+            else
+                ' print ("Unhandled msg type")
+                exit while
+            end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
+        else
+            ' print ("Unhandled msg: " + type(dlgMsg))
+            exit while
+        end if
+    end while
+    return 0
+End Function
+
+Sub updateVListDialogText(dialog as Object, isUpdate = false as Boolean)
+    reversedText = "No"
+    if ( m.youtube.reversed_playlist = true ) then
+        reversedText = "Yes"
+    end if
+    dialogText = "Playlist Reversed: " + reversedText
+    if ( isUpdate = true ) then
+        dialog.UpdateText( dialogText )
+    else
+        dialog.SetText( dialogText )
+    end if
 End Sub
