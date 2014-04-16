@@ -262,7 +262,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                     onplay_func(contentlist[idx%])
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
                     reversePlaylist = m.youtube.reversed_playlist
-                    while ( VListOptionDialog( isPlaylist ) = 1 )
+                    while ( VListOptionDialog( true ) = 1 )
                     end while
                     if ( reversePlaylist <> m.youtube.reversed_playlist ) then
                         ' This calls the content callback
@@ -278,6 +278,9 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                             screen.Show()
                         end if
                     end if
+                else if ( awaiting_timeout = false AND isPlaylist = false AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
+                    while ( VListOptionDialog( false ) = 1 )
+                    end while
                 end if
             end if
         else if (msg = invalid) then
