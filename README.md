@@ -10,6 +10,8 @@ Installation
 Enable development mode on your Roku Streaming Player with the following remote 
 control sequence:
 
+**Note: This code cannot be entered from a mobile app (iOS, Android, etc.). You must use a physical Roku remote!**
+
     Home 3x, Up 2x, Right, Left, Right, Left, Right
 
 On newer versions of the Roku firmware, you will then be prompted to set the web server password. Choose a password (and remember it!), then reboot the Roku.
