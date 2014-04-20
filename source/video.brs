@@ -817,7 +817,7 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
     if (Left(LCase(video["ID"]), 4) = "http") then
         url = video["ID"]
     else
-        url = "http://www.youtube.com/get_video_info?video_id=" + video["ID"]
+        url = "http://www.youtube.com/get_video_info?el=detailpage&video_id=" + video["ID"]
     end if
     htmlString = ""
     port = CreateObject("roMessagePort")
