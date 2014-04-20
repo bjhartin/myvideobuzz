@@ -96,6 +96,10 @@ Function InitYouTube() As Object
     ' Pre-compile the YouTube video ID regex
     this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "")
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
+    this.regexTimestampHumanReadable = CreateObject( "roRegex", "\D+", "" )
+    this.regexTimestampHours = CreateObject( "roRegex", "(\d+)h+", "" )
+    this.regexTimestampMinutes = CreateObject( "roRegex", "(\d+)m+", "" )
+    this.regexTimestampSeconds = CreateObject( "roRegex", "(\d+)s+", "" )
 
     ' Should playlists be queried for their reversed order? Default is false
     this.reversed_playlist = false
@@ -535,8 +539,7 @@ End Function
 
 '*******************************************
 '  Returns the length of the video in a human-friendly format
-'  i.e. 3700 seconds becomes: 1h 1m
-'  TODO: use utility functions in generalUtils
+'  i.e. 3700 seconds becomes: 1h 1m 40s
 '*******************************************
 Function get_length_as_human_readable(length As Dynamic) As String
     if (type(length) = "roString") then
@@ -562,6 +565,30 @@ Function get_length_as_human_readable(length As Dynamic) As String
     end if
     ' Default return
     return "Unknown"
+End Function
+
+'*******************************************
+'  Returns the length of the video in seconds
+'  i.e. 1h1m becomes 3660 seconds
+'*******************************************
+Function get_human_readable_as_length(length As Dynamic) As Integer
+    len% = 0
+    yt = LoadYouTube()
+    hourMatches = yt.regexTimestampHours.Match( length )
+    if ( hourMatches.Count() = 2 ) then
+        len% = len% + (3600 * strtoi( hourMatches[1] ))
+    end if
+
+    minuteMatches = yt.regexTimestampMinutes.Match( length )
+    if ( minuteMatches.Count() = 2 ) then
+        len% = len% + (60 * strtoi( minuteMatches[1] ))
+    end if
+
+    secMatches = yt.regexTimestampSeconds.Match( length )
+    if ( secMatches.Count() = 2 ) then
+        len% = len% + strtoi( secMatches[1] )
+    end if
+    return len%
 End Function
 
 Function get_xml_author(xml as Object) As Dynamic

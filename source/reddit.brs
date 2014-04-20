@@ -228,7 +228,8 @@ Function NewRedditVideo(jsonObject As Object) As Object
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
-    idMatches = LoadYouTube().ytIDRegex.Match( decodedUrl )
+    yt = LoadYouTube()
+    idMatches = yt.ytIDRegex.Match( decodedUrl )
     id = invalid
     if ( idMatches.Count() > 1 ) then
         ' Default the PlayStart, since it is read later on
@@ -238,7 +239,11 @@ Function NewRedditVideo(jsonObject As Object) As Object
         if ( tParam <> invalid ) then
             ' This code gets the timestamp from the normal url param (?t or &t)
             if ( strtoi( tParam ) <> invalid ) then
-                video["PlayStart"]  = strtoi( tParam )
+                if ( yt.regexTimestampHumanReadable.Match( tParam ).Count() = 0 ) then
+                    video["PlayStart"]  = strtoi( tParam )
+                else
+                    video["PlayStart"]  = get_human_readable_as_length( tParam )
+                end if
             end if
         else if ( ytUrl.anchor <> invalid AND ytUrl.anchor.InStr("t=") <> -1 ) then
             ' This set of code gets the timestamp from the anchor param (#t)

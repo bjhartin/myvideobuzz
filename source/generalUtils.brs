@@ -423,7 +423,7 @@ Function itostr(i As Integer) As String
 End Function
 
 '******************************************************
-' Get 'aining hours from a total seconds
+' Get remaining hours from a total seconds
 '******************************************************
 Function hoursLeft(seconds As Integer) As Integer
     hours% = seconds / 3600
@@ -431,7 +431,7 @@ Function hoursLeft(seconds As Integer) As Integer
 End Function
 
 '******************************************************
-' Get 'aining minutes from a total seconds
+' Get remaining minutes from a total seconds
 '******************************************************
 Function minutesLeft(seconds As Integer) As Integer
     hours% = seconds / 3600
