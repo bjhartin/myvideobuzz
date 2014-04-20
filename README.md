@@ -30,7 +30,7 @@ have one development channel installed at a time.
 ### Alternative Installation Method - Windows users
 ============
 
-Download the whole repository [Here - Current Release: 1.6](https://github.com/Protuhj/myvideobuzz/archive/v1.6.1.zip)
+Download the whole repository [Here - Current Release: 1.6.1](https://github.com/Protuhj/myvideobuzz/archive/v1.6.1.zip)
 Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
 
     <Roku IP><space>rokudev:<rokupassword>
