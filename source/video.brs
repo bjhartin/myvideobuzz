@@ -35,6 +35,7 @@ Function InitYouTube() As Object
 
     'API Calls
     this.ExecServerAPI = youtube_exec_api
+    this.ExecBatchQuery = ExecBatchQuery_impl
 
     'Search
     this.SearchYouTube = youtube_search
@@ -94,12 +95,12 @@ Function InitYouTube() As Object
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
-    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "")
+    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/\n]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "igm")
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
     this.regexTimestampHumanReadable = CreateObject( "roRegex", "\D+", "" )
-    this.regexTimestampHours = CreateObject( "roRegex", "(\d+)h+", "" )
-    this.regexTimestampMinutes = CreateObject( "roRegex", "(\d+)m+", "" )
-    this.regexTimestampSeconds = CreateObject( "roRegex", "(\d+)s+", "" )
+    this.regexTimestampHours = CreateObject( "roRegex", "(\d+)h+", "i" )
+    this.regexTimestampMinutes = CreateObject( "roRegex", "(\d+)m+", "i" )
+    this.regexTimestampSeconds = CreateObject( "roRegex", "(\d+)s+", "i" )
 
     ' Should playlists be queried for their reversed order? Default is false
     this.reversed_playlist = false
@@ -108,6 +109,26 @@ Function InitYouTube() As Object
     return this
 End Function
 
+Function batch_request_xml( ids as Dynamic ) as String
+    sQuote = Quote()
+    returnVal = "<feed xmlns=" + sQuote + "http://www.w3.org/2005/Atom" + sQuote
+    returnVal = returnVal + " xmlns:media=" + sQuote + "http://search.yahoo.com/mrss/" + sQuote
+    returnVal = returnVal + " xmlns:batch=" + sQuote + "http://schemas.google.com/gdata/batch" + sQuote
+    returnVal = returnVal + " xmlns:yt=" + sQuote + "http://gdata.youtube.com/schemas/2007" + sQuote + ">"
+    returnVal = returnVal + "<batch:operation type=" + Quote() + "query" + Quote() + "/>"
+    for each id in ids
+        returnVal = returnVal + "<entry><id>http://gdata.youtube.com/feeds/api/videos/" + id + "</id></entry>"
+    end for
+    returnVal = returnVal + "</feed>"
+    return returnVal
+End Function
+
+Sub ExecBatchQuery_impl( xmlContent as String )
+    request = {}
+    request.url_stub = "videos/batch"
+    request.postdata = xmlContent
+    m.FetchVideoList( request, "Videos Linked in Description", invalid )
+End Sub
 
 Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
     'oa = Oauth()
@@ -158,7 +179,7 @@ Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, e
     'oa.sign(http,true)
 
     'print "----------------------------------"
-    if (Instr(1, request, "pkg:/") > 0) then
+    if ( isstr( request ) AND Instr( 1, request, "pkg:/" ) > 0 ) then
         rsp = ReadAsciiFile(request)
     else if (postdata <> invalid) then
         rsp = http.PostFromStringWithTimeout(postdata, 10, headers)
@@ -177,7 +198,7 @@ Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, e
     returnObj = CreateObject("roAssociativeArray")
     returnObj.xml = xml
     returnObj.status = http.status
-    if (Instr(1, request, "pkg:/") < 0) then
+    if ( isstr( request ) AND Instr( 1, request, "pkg:/" ) < 0 ) then
         returnObj.error = handleYoutubeError(returnObj)
     end if
 
@@ -454,6 +475,7 @@ Function youtube_new_video(xml As Object) As Object
     video["UserID"]         = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaderId")[0].GetText()
     video["Title"]          = xml.title[0].GetText()
     video["Category"]       = xml.GetNamedElements("media:group")[0].GetNamedElements("media:category")[0].GetText()
+    video["Linked"]         = get_linked( xml )
     video["Description"]    = get_desc(xml)
     video["Length"]         = GetLength_impl(xml)
     video["UploadDate"]     = GetUploadDate_impl(xml)
@@ -487,16 +509,21 @@ Function GetVideoMetaData(videos As Object)
         meta["StreamFormat"]           = "mp4"
         meta["Live"]                   = false
         meta["Streams"]                = []
+        meta["Linked"]                 = video["Linked"]
         meta["PlayStart"]              = 0
         meta["SwitchingStrategy"]      = "no-adaptation"
-        'meta.StreamBitrates=[]
-        'meta.StreamQualities=[]
-        'meta.StreamUrls=[]
 
         metadata.Push(meta)
     end for
 
     return metadata
+End Function
+Function get_linked( xml as Object ) as Dynamic
+    desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
+    if (desc.Count() > 0) then
+        return MatchAll( LoadYouTube().ytIDRegex, desc[0].GetText() )
+    end if
+    return []
 End Function
 
 Function get_desc(xml as Object) As Dynamic
@@ -664,13 +691,6 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                         DisplayVideo(m.video)
                         buttons = m.BuildButtons()
                     end if
-                else if (msg.GetIndex() = 5) then ' Play from beginning
-                    m.video["PlayStart"] = 0
-                    result = video_get_qualities(m.video)
-                    if (result = 0) then
-                        DisplayVideo(m.video)
-                        buttons = m.BuildButtons()
-                    end if
                 else if (msg.GetIndex() = 1) then ' Play All
                     for i = idx to videos.Count() - 1  Step +1
                         selectedVideo = videos[i]
@@ -689,6 +709,15 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                     m.BrowseUserVideos(m.video["Author"], m.video["UserID"])
                 else if (msg.GetIndex() = 4) then
                     m.BrowseUserPlaylists(m.video["Author"], m.video["UserID"])
+                else if (msg.GetIndex() = 5) then ' Play from beginning
+                    m.video["PlayStart"] = 0
+                    result = video_get_qualities(m.video)
+                    if (result = 0) then
+                        DisplayVideo(m.video)
+                        buttons = m.BuildButtons()
+                    end if
+                else if (msg.GetIndex() = 6) then ' Linked videos
+                    m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
                 end if
             else if (msg.isRemoteKeyPressed()) then
                 if (msg.GetIndex() = 4) then  ' left
@@ -746,6 +775,9 @@ Function BuildButtons_impl() as Object
         end if
         buttons["more"]         = m.screen.AddButton(3, "More Videos By " + m.video["Author"])
         buttons["playlists"]    = m.screen.AddButton(4, "Show "+ m.video["Author"] + "'s playlists")
+    end if
+    if (m.video["Linked"] <> invalid AND m.video["Linked"].Count() > 0) then
+        buttons["linked"]       = m.screen.AddButton(6, "Linked Videos")
     end if
     return buttons
 End Function

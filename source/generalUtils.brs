@@ -386,58 +386,12 @@ End Function
 
 
 '******************************************************
-' Convert string to boolean safely. Don't crash
-' Looks for certain string values
-'******************************************************
-Function strtobool(obj As dynamic) As Boolean
-    if (obj = invalid) then
-        return false
-    end if
-    if (type(obj) <> "roString") then
-        return false
-    end if
-    o = strTrim(obj)
-    o = Lcase(o)
-    if (o = "true") then
-        return true
-    end if
-    if (o = "t") then
-        return true
-    end if
-    if (o = "y") then
-        return true
-    end if
-    if (o = "1") then
-        return true
-    end if
-    return false
-End Function
-
-'******************************************************
 ' Convert int to string. This is necessary because
 ' the builtin Stri(x) prepends whitespace
 '******************************************************
 Function itostr(i As Integer) As String
     str = Stri(i)
     return strTrim(str)
-End Function
-
-'******************************************************
-' Get remaining hours from a total seconds
-'******************************************************
-Function hoursLeft(seconds As Integer) As Integer
-    hours% = seconds / 3600
-    return hours%
-End Function
-
-'******************************************************
-' Get remaining minutes from a total seconds
-'******************************************************
-Function minutesLeft(seconds As Integer) As Integer
-    hours% = seconds / 3600
-    mins% = seconds - (hours% * 3600)
-    mins% = mins% / 60
-    return mins%
 End Function
 
 '******************************************************
@@ -497,97 +451,6 @@ Function strReplace(basestr As String, oldsub As String, newsub As String) As St
 
     return newstr
 End Function
-
-'******************************************************
-' Get all XML subelements by name
-'
-' return list of 0 or more elements
-'******************************************************
-Function GetXMLElementsByName(xml As Object, name As String) As Object
-    list = CreateObject("roArray", 100, true)
-    if (not(islist(xml.GetBody()))) then
-        return list
-    end if
-
-    for each e in xml.GetBody()
-        if (e.GetName() = name) then
-            list.Push(e)
-        end if
-    next
-
-    return list
-End Function
-
-'******************************************************
-' Get all XML subelement's string bodies by name
-'
-' return list of 0 or more strings
-'******************************************************
-Function GetXMLElementBodiesByName(xml As Object, name As String) As Object
-    list = CreateObject("roArray", 100, true)
-    if (not(islist(xml.GetBody()))) then
-        return list
-    end if
-
-    for each e in xml.GetBody()
-        if (e.GetName() = name) then
-            b = e.GetBody()
-            if (type(b) = "roString") then
-                list.Push(b)
-            end if
-        end if
-    next
-
-    return list
-End Function
-
-'******************************************************
-' Get first XML subelement by name
-'
-' return invalid if not found, else the element
-'******************************************************
-Function GetFirstXMLElementByName(xml As Object, name As String) As Dynamic
-    if (not(islist(xml.GetBody()))) then
-        return invalid
-    end if
-
-    for each e in xml.GetBody()
-        if (e.GetName() = name) then
-            return e
-        end if
-    next
-
-    return invalid
-End Function
-
-'******************************************************
-' Get first XML subelement's string body by name
-'
-' return invalid if not found, else the subelement's body string
-'******************************************************
-Function GetFirstXMLElementBodyStringByName(xml As Object, name As String) As Dynamic
-    e = GetFirstXMLElementByName(xml, name)
-    if (e = invalid) then
-        return invalid
-    end if
-    if (type(e.GetBody()) <> "roString") then
-        return invalid
-    end if
-    return e.GetBody()
-End Function
-
-'******************************************************
-' Get the xml element as an integer
-'
-' return invalid if body not a string, else the integer as converted by strtoi
-'******************************************************
-Function GetXMLBodyAsInteger(xml As Object) As Dynamic
-    if (type(xml.GetBody()) <> "roString") then
-        return invalid
-    end if
-    return strtoi(xml.GetBody())
-End Function
-
 
 '******************************************************
 ' Parse a string into a roXMLElement
@@ -861,24 +724,6 @@ Sub DumpString(str As String)
     print "---------------------------"
 End Sub
 
-'******************************************************
-' Validate parameter is the correct type
-'******************************************************
-Function validateParam(param As Object, paramType As String,functionName As String, allowInvalid = false) As Boolean
-    if (type(param) = paramType) then
-        return true
-    end if
-
-    if (allowInvalid = true) then
-        if (type(param) = invalid) then
-            return true
-        end if
-    end if
-
-    print "invalid parameter of type "; type(param); " for "; paramType; " in function "; functionName
-    return false
-End Function
-
 Function wrap(num As Integer, size As Dynamic) As Integer
     ' wraps via mod if size works
     ' else just clips negatives to zero
@@ -1004,4 +849,23 @@ Function IIf( Condition, Result1, Result2 )
     Else
         Return Result2
     End If
+End Function
+
+Function MatchAll(regex as Object, text As String) As Object
+   response = Left(text, Len(text))
+   values = []
+   matches = regex.Match( response )
+   iLoop = 0
+   while ( matches.Count() > 1 )
+      values.Push( matches[ 1 ] )
+      ' remove this instance, so we can get the next match
+      response = regex.Replace( response, "" )
+      matches = regex.Match( response )
+      ' if we've looped more than 50 times, then we're probably stuck, so exit
+      iLoop = iLoop + 1
+      if ( iLoop > 50 ) Then
+        exit while
+      end if
+   end while
+   return values
 End Function

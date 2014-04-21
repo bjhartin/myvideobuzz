@@ -265,6 +265,7 @@ Function NewRedditVideo(jsonObject As Object) As Object
         desc = ""
     end if
     video["Description"]   = htmlDecode( desc )
+    video["Linked"]        = MatchAll( yt.ytIDRegex, video["Description"] )
     video["Score"]         = jsonObject.data.score
     thumb = ""
     if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
@@ -306,6 +307,7 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["HDPosterUrl"]            = video["Thumb"]
         meta["StreamFormat"]           = "mp4"
         meta["Streams"]                = []
+        meta["Linked"]                 = video["Linked"]
         meta["PlayStart"]              = video["PlayStart"]
         metadata.Push(meta)
     end for

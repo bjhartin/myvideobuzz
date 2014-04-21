@@ -94,6 +94,7 @@ Sub initTheme()
     theme.SpringboardRuntimeColor   = textColor
     theme.SpringboardGenreColor     = textColor
     theme.SpringboardSynopsisColor  = textColor
+    theme.SpringboardAllow6Buttons  = "true"
 
     theme.FilterBannerActiveColor   = textColor
     theme.ButtonMenuNormalText   = textColor
