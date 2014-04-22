@@ -1048,7 +1048,11 @@ Sub AddHistory_impl(video as Object)
     ' and all of the descriptions are truncated before storing to the registry
     descs = {}
     for each vid in m.history
-        vid["Streams"].Clear()
+        if ( islist( vid["Streams"] ) ) then
+            vid["Streams"].Clear()
+        else
+            vid["Streams"] = []
+        end if
         descs[vid["ID"]] = vid["Description"]
 
         if ( Len(descs[vid["ID"]]) > 50 ) then
