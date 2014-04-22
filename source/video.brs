@@ -96,6 +96,7 @@ Function InitYouTube() As Object
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
     this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com/(?:[^/\n]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/ ]{11})", "igm")
+    this.gfycatIDRegex = CreateObject( "roRegex", "(?:.*gfycat\.com\/)(\w*)\W*.*", "ig" )
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
     this.regexTimestampHumanReadable = CreateObject( "roRegex", "\D+", "" )
     this.regexTimestampHours = CreateObject( "roRegex", "(\d+)h+", "i" )
@@ -510,8 +511,10 @@ Function GetVideoMetaData(videos As Object)
         meta["Live"]                   = false
         meta["Streams"]                = []
         meta["Linked"]                 = video["Linked"]
+        meta["Source"]                 = video["Source"]
         meta["PlayStart"]              = 0
         meta["SwitchingStrategy"]      = "no-adaptation"
+        meta["Source"]                 = "YouTube"
 
         metadata.Push(meta)
     end for
@@ -844,7 +847,7 @@ Function DisplayVideo(content As Object)
     return ret
 End Function
 
-function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as string) as object
+Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
     video["Streams"].Clear()
     if (Left(LCase(video["ID"]), 4) = "http") then
         url = video["ID"]
@@ -939,17 +942,59 @@ function getMP4Url(video as Object, timeout = 0 as integer, loginCookie = "" as 
         print ("Nothing in urlEncodedFmtStreamMap")
     end if
     return video["Streams"]
+End Function
+
+Function getGfycatMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
+    video["Streams"].Clear()
+    
+    if ( video["ID"] <> invalid ) then
+        url = "http://gfycat.com/cajax/get/" + video["ID"]
+        jsonString = ""
+        port = CreateObject( "roMessagePort" )
+        ut = CreateObject( "roUrlTransfer" )
+        ut.SetPort( port )
+        ut.AddHeader( "User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0" )
+        ut.AddHeader( "Cookie", loginCookie )
+        ut.SetUrl( url )
+        if ( ut.AsyncGetToString() ) then
+            while ( true )
+                msg = Wait( timeout, port )
+                if ( type(msg) = "roUrlEvent" ) then
+                    status = msg.GetResponseCode()
+                    if ( status = 200 ) then
+                        jsonString = msg.GetString()
+                        json = ParseJson( jsonString )
+                        if (json <> invalid) then
+                            video["Streams"].Push( {url: htmlDecode( json.gfyItem.mp4Url ), bitrate: 512, quality: false, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                        end if
+                    end if
+                    exit while
+                else if ( type(msg) = "Invalid" ) then
+                    ut.AsyncCancel()
+                    exit while
+                end if
+            end while
+        end if
+    end if
+    return video["Streams"]
 end function
 
 
 Function video_get_qualities(video as Object) As Integer
-
-    getMP4Url(video)
-    if (video["Streams"].Count() > 0) then
+    source = video["Source"]
+    if ( source = invalid OR source = "YouTube" ) then
+        getYouTubeMP4Url( video )
+    else if ( source = "Gfycat" ) then
+        getGfycatMP4Url( video )
+    end if
+    
+    if ( video["Streams"].Count() > 0 ) then
         return 0
     end if
-    problem = ShowDialogNoButton("", "Having trouble finding a Roku-compatible stream...")
-    sleep(3000)
+    problem = ShowDialogNoButton( "", "Having trouble finding a Roku-compatible stream..." )
+    sleep( 3000 )
     problem.Close()
     return -1
 End Function
