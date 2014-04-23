@@ -43,6 +43,16 @@ by changing the ZIP_LOCATION variable to point to the location of the zip you wo
 
 By doing this, you won't have to edit the rokus.txt in the future when updating your Rokus.
 
+Usage
+========
+
+This channel uses publicly-available information from your YouTube account. In order to 
+ensure that the channel works for you, you will need to make sure your Subscriptions, Playlists, and Favorites are publicly available.
+
+To do this, go to https://www.youtube.com/account_privacy and make sure the checkboxes under "Likes and Subscriptions" are unchecked.
+Then, go to https://www.youtube.com/view_all_playlists to manage which playlists you would like to be visible in VideoBuzz. 
+Click on the 'Edit' button next to each playlist you would like to change, and then on the next page, click "Playlist settings" and change the "PLAYLIST PRIVACY" to Public.
+
 Advanced
 ========
 
