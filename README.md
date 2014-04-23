@@ -27,8 +27,9 @@ address. Open up a standard web browser and visit the following URL:
 Due to limitations in the sandboxing of development Roku channels, you can only
 have one development channel installed at a time.
 
+<br/>
+
 ### Alternative Installation Method - Windows users
-============
 
 Download the whole repository [Here - Current Release: 1.6.1](https://github.com/Protuhj/myvideobuzz/archive/v1.6.1.zip)
 Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
@@ -42,19 +43,21 @@ You can copy the .\deploy\ folder somewhere permanent on your hard drive, and mo
 by changing the ZIP_LOCATION variable to point to the location of the zip you would like to deploy.
 
 By doing this, you won't have to edit the rokus.txt in the future when updating your Rokus.
+<br/>
+<br/>
 
-Usage
-========
+### Usage
 
 This channel uses publicly-available information from your YouTube account. In order to 
 ensure that the channel works for you, you will need to make sure your Subscriptions, Playlists, and Favorites are publicly available.
 
-To do this, go to https://www.youtube.com/account_privacy and make sure the checkboxes under "Likes and Subscriptions" are unchecked.
-Then, go to https://www.youtube.com/view_all_playlists to manage which playlists you would like to be visible in VideoBuzz. 
-Click on the 'Edit' button next to each playlist you would like to change, and then on the next page, click "Playlist settings" and change the "PLAYLIST PRIVACY" to Public.
-
-Advanced
-========
+* To do this, go to https://www.youtube.com/account_privacy and make sure the checkboxes under "Likes and Subscriptions" are unchecked.  
+* Then, go to https://www.youtube.com/view_all_playlists to manage which playlists you would like to be visible in VideoBuzz.   
+    * Click on the 'Edit' button next to each playlist you would like to change  
+    * Then on the next page, click "Playlist settings" and change the "PLAYLIST PRIVACY" to Public.
+<br/>
+<br/>
+<br/>
 
 ### Debugging
 
@@ -62,16 +65,12 @@ Your Roku's debug console can be accessed by telnet at port 8085:
 
     telnet <rokuPlayer-ip-address> 8085
 
-### Building from source
+<br/>
+<br/>
+<br/>
+  
+## Contributing
 
-The [Roku Developer SDK](http://www.roku.com/developer) includes a handy Make script 
-for automatically zipping and installing the channel onto your device should you make
-any changes.  Just add the project to your SDK's `examples/source` folder and run the
-`make install` command from that directory via your terminal.
-
-
-Contributing
-------------
 
 Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz
 
