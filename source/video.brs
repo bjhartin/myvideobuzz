@@ -532,7 +532,7 @@ End Function
 Function get_desc(xml as Object) As Dynamic
     desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
     if (desc.Count() > 0) then
-        return Left(desc[0].GetText(), 300)
+        return desc[0].GetText()
     end if
     return invalid
 End Function
@@ -667,7 +667,8 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
     if (theVideo["StarRating"] = invalid) then
         screen.SetStaticRatingEnabled(false)
     end if
-    if (videos.Count() > 1) then
+    vidCount = videos.Count()
+    if ( vidCount > 1 ) then
         screen.AllowNavLeft(true)
         screen.AllowNavRight(true)
     end if
@@ -695,14 +696,16 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                         buttons = m.BuildButtons()
                     end if
                 else if (msg.GetIndex() = 1) then ' Play All
-                    for i = idx to videos.Count() - 1  Step +1
+                    for i = idx to vidCount - 1  Step +1
                         selectedVideo = videos[i]
-                        result = video_get_qualities(selectedVideo)
-                        if (result = 0) then
-                            ret = DisplayVideo(selectedVideo)
-                            if (ret > 0) then
-                                buttons = m.BuildButtons()
-                                Exit For
+                        if ( selectedVideo["action"] = invalid )
+                            result = video_get_qualities(selectedVideo)
+                            if (result = 0) then
+                                ret = DisplayVideo(selectedVideo)
+                                if (ret > 0) then
+                                    buttons = m.BuildButtons()
+                                    Exit For
+                                end if
                             end if
                         end if
                     end for
@@ -722,30 +725,41 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                 else if (msg.GetIndex() = 6) then ' Linked videos
                     m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
                 end if
-            else if (msg.isRemoteKeyPressed()) then
-                if (msg.GetIndex() = 4) then  ' left
-                    if (videos.Count() > 1) then
-                        idx = idx - 1
-                        if ( idx < 0 ) then
-                            ' Last video is the 'next' video link
-                            idx = videos.Count() - 2
-                        end if
-                        m.video = videos[idx]
-                        buttons = m.BuildButtons()
-                        screen.SetContent( m.video )
+            else if ( msg.isRemoteKeyPressed() ) then
+                if ( msg.GetIndex() = 4 AND vidCount > 1 ) then  ' left arrow
+                    idx = idx - 1
+                    ' Check to see if the first video is an 'Action' button
+                    if ( (idx < 0) OR (idx = 0 AND videos[idx]["action"] <> invalid) ) then
+                        ' Set index to last video
+                        idx = vidCount - 1
                     end if
-                else if (msg.GetIndex() = 5) then ' right
-                    if (videos.Count() > 1) then
-                        idx = idx + 1
-                        if ( idx = videos.Count() - 1 ) then
-                            ' Last video is the 'next' video link
-                            idx = 0
-                        end if
-                        m.video = videos[idx]
-                        buttons = m.BuildButtons()
-                        screen.SetContent( m.video )
+                    ' Now check to see if the last video is an 'Action' button
+                    if ( idx = vidCount - 1 AND videos[idx]["action"] <> invalid ) then
+                        ' Last video is the 'next' video link, so move the index one more to the left
+                         idx = idx - 1
                     end if
+                    m.video = videos[idx]
+                    buttons = m.BuildButtons()
+                    screen.SetContent( m.video )
+                else if ( msg.GetIndex() = 5 AND vidCount > 1 ) then ' right arrow
+                    idx = idx + 1
+                    ' Check to see if the last video is an "Action" button
+                    if ( (idx = vidCount) OR (idx = vidCount - 1 AND videos[idx]["action"] <> invalid) ) then
+                        ' Last video is the 'next' video link
+                        idx = 0
+                    end if
+                    ' Now check to see if the first video is an 'Action' button
+                    if ( idx = 0 AND videos[idx]["action"] <> invalid ) then
+                        ' First video is the 'Back' video link, so move the index one more to the right
+                         idx = idx + 1
+                    end if
+                    m.video = videos[idx]
+                    buttons = m.BuildButtons()
+                    screen.SetContent( m.video )
                 end if
+            else if ( msg.isButtonInfo() ) then
+                while ( VListOptionDialog( false, m.video ) = 1 )
+                end while
             else
                 'print "Unknown event: "; msg.GetType(); " msg: "; msg.GetMessage()
             end if
@@ -812,6 +826,7 @@ Function DisplayVideo(content As Object)
                 exit while
             else if (msg.isRequestFailed()) then
                 print "play failed: " ; msg.GetMessage()
+                ShowErrorDialog( "Video playback failed", "Unknown Playback Error" )
             else if (msg.isPlaybackPosition()) then
                 content["PlayStart"] = msg.GetIndex()
                 if ( yt.sleep_timer <> -100 AND msg.GetIndex() <> 0 ) then
@@ -949,7 +964,7 @@ End Function
 
 Function getGfycatMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
     video["Streams"].Clear()
-    
+
     if ( video["ID"] <> invalid ) then
         url = "http://gfycat.com/cajax/get/" + video["ID"]
         jsonString = ""
@@ -986,15 +1001,19 @@ end function
 
 
 Function video_get_qualities(video as Object) As Integer
-    source = video["Source"]
-    if ( source = invalid OR source = "YouTube" ) then
-        getYouTubeMP4Url( video )
-    else if ( source = "Gfycat" ) then
-        getGfycatMP4Url( video )
-    end if
-    
-    if ( video["Streams"].Count() > 0 ) then
-        return 0
+    if ( video["Streams"] <> invalid ) then
+        source = video["Source"]
+        if ( source = invalid OR source = "YouTube" ) then
+            getYouTubeMP4Url( video )
+        else if ( source = "Gfycat" ) then
+            getGfycatMP4Url( video )
+        end if
+
+        if ( video["Streams"].Count() > 0 ) then
+            return 0
+        end if
+    else
+        print( "Invalid argument to video_get_qualities" )
     end if
     problem = ShowDialogNoButton( "", "Having trouble finding a Roku-compatible stream..." )
     sleep( 3000 )

@@ -90,7 +90,7 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
                     if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED ) then
                         onplay_func( posterdata[idx%] )
                     else if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_INFO_PRESSED ) then
-                        while ( VListOptionDialog( false ) = 1 )
+                        while ( VListOptionDialog( false, posterdata[idx%] ) = 1 )
                         end while
                     end if
                 end if
@@ -116,6 +116,26 @@ Function uitkPreShowListMenu(breadA=invalid, breadB=invalid) As Object
 
     return screen
 end function
+
+Sub uitkTextScreen( title as String, headerText as String, text as String )
+    port = CreateObject( "roMessagePort" )
+    screen = CreateObject( "roTextScreen" )
+    screen.SetMessagePort( port )
+    screen.SetTitle( title )
+    screen.SetText( "Title: " + headerText + Chr(13) + Chr(13) + "Description:" + Chr(13) + text )
+    screen.Show()
+
+    while ( true )
+        msg = wait( 2000, port )
+        if ( type( msg ) = "roTextScreenEvent" ) then
+            if ( msg.isScreenClosed() ) then
+                exit while
+            end if
+        else if ( msg = invalid ) then
+            CheckForMCast()
+        end if
+    end while
+End Sub
 
 
 Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Integer
@@ -176,6 +196,7 @@ Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Intege
             CheckForMCast()
         end if
     end while
+    return 0
 End Function
 
 
@@ -238,6 +259,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 category_time.Mark()
 
                 contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
+                ' Handles when the Back/Forward arrows are clicked
                 if ( contentData.isContentList = true ) then
                     contentlist = contentData.content
                     if (contentlist.Count() <> 0) then
@@ -262,7 +284,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                     onplay_func(contentlist[idx%])
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
                     reversePlaylist = m.youtube.reversed_playlist
-                    while ( VListOptionDialog( true ) = 1 )
+                    while ( VListOptionDialog( true, contentlist[idx%] ) = 1 )
                     end while
                     if ( reversePlaylist <> m.youtube.reversed_playlist ) then
                         ' This calls the content callback
@@ -279,7 +301,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                         end if
                     end if
                 else if ( awaiting_timeout = false AND isPlaylist = false AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
-                    while ( VListOptionDialog( false ) = 1 )
+                    while ( VListOptionDialog( false, contentlist[idx%] ) = 1 )
                     end while
                 end if
             end if
@@ -299,6 +321,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 else
                     screen.SetContentList(contentlist)
                     screen.SetFocusedListItem(0)
+                    idx% = 0
                 end if
             else if (multicast_time.TotalSeconds() > 2) then
                 ' Don't allow the CheckForMCast function to run too much due to the category query change
@@ -319,7 +342,7 @@ Sub uitkDoMessage(message, screen)
     end while
 End Sub
 
-Function VListOptionDialog( showReverse as Boolean ) as Integer
+Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Integer
     dialog = CreateObject( "roMessageDialog" )
     port = CreateObject( "roMessagePort" )
     dialog.SetMessagePort( port )
@@ -331,13 +354,16 @@ Function VListOptionDialog( showReverse as Boolean ) as Integer
         reverseId = 1
         sleepId = 2
         doneId = 3
+        detailsId = 4
         dialog.addButton( reverseId, "Reverse Playlist Order" )
     else
         reverseId = 0
         sleepId = 1
         doneId = 2
+        detailsId = 3
     end if
     dialog.addButton( sleepId, "Set Sleep Timer" )
+    dialog.addButton( detailsId, "View Full Description" )
     dialog.addButton( doneId, "Done")
     dialog.Show()
     while true
@@ -358,6 +384,10 @@ Function VListOptionDialog( showReverse as Boolean ) as Integer
                         updateVListDialogText( dialog, true, showReverse )
                     end if
                     return 1 ' Re-open the options
+                else if ( dlgMsg.GetIndex() = detailsId ) then
+                    dialog.Close()
+                    uitkTextScreen( "Full Description", videoObj["TitleSeason"], videoObj["Description"] )
+                    return 0
                 else if (dlgMsg.GetIndex() = doneId) then
                     dialog.Close()
                     exit while

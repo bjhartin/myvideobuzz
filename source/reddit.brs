@@ -73,7 +73,7 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                 end if
                 ' Include a Back button, if there is more than one item left in the list
                 previous = linksList.Count() > 1
-                return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) } 
+                return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
             else
                 youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
                 return { isContentList: false, content: video }
@@ -326,7 +326,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
     else
         thumb = jsonObject.data.thumbnail
     end if
-    if ( thumb = "default" ) then
+    if ( thumb = "default" or thumb = "nsfw" ) then
         thumb = invalid
     end if
     video["Thumb"]         = thumb
