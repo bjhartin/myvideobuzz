@@ -106,7 +106,7 @@ Function InitYouTube() As Object
     ' Should playlists be queried for their reversed order? Default is false
     this.reversed_playlist = false
 
-    this.sleep_timer = -1
+    this.sleep_timer = -100
     return this
 End Function
 
@@ -814,14 +814,17 @@ Function DisplayVideo(content As Object)
                 print "play failed: " ; msg.GetMessage()
             else if (msg.isPlaybackPosition()) then
                 content["PlayStart"] = msg.GetIndex()
-                if ( yt.sleep_timer <> -1 ) then
+                if ( yt.sleep_timer <> -100 AND msg.GetIndex() <> 0 ) then
                     yt.sleep_timer = yt.sleep_timer - 5
-                    if ( yt.sleep_timer <= 0 ) then
+                    if ( yt.sleep_timer < 0 ) then
                         print( "Sleepy time" )
-                        yt.sleep_timer = -1
+                        yt.sleep_timer = -100
                         video.Close()
                         ' Set the return value so that 'Play All' won't continue if the sleep timer elapses
                         ret = 2
+                        problem = ShowDialogNoButton( "Sleep Timer Expired", "" )
+                        sleep( 3000 )
+                        problem.Close()
                         exit while
                     end if
                 end if

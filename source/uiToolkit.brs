@@ -385,7 +385,7 @@ Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseTex
     if ( m.youtube.reversed_playlist = true ) then
         reversedText = "Yes"
     end if
-    if ( m.youtube.sleep_timer <> -1 ) then
+    if ( m.youtube.sleep_timer <> -100 ) then
         sleepText = get_length_as_human_readable( m.youtube.sleep_timer )
     end if
     dialogText = ""
@@ -401,35 +401,31 @@ Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseTex
 End Sub
 
 Function SleepTimerClicked() as Integer
-    dialog = CreateObject("roMessageDialog")
-    port = CreateObject("roMessagePort")
-    dialog.SetMessagePort(port)
-    dialog.SetTitle("Sleep Timer Settings")
-    dialog.EnableBackButton(true)
-    dialog.addButton(1, "Off")
-    dialog.addButton(2, "30 minutes")
-    dialog.addButton(3, "60 minutes")
-    dialog.addButton(4, "90 minutes")
+    dialog = CreateObject( "roMessageDialog" )
+    port = CreateObject( "roMessagePort" )
+    dialog.SetMessagePort( port )
+    dialog.SetTitle( "Sleep Timer Settings" )
+    dialog.SetMenuTopLeft( true )
+    dialog.EnableBackButton( true )
+    dialog.addButton( -1, "Off")
+    dialog.addButton( 30, "30 minutes" )
+    dialog.addButton( 45, "45 minutes" )
+    dialog.addButton( 60, "60 minutes" )
+    dialog.addButton( 75, "75 minutes" )
+    dialog.addButton( 90, "90 minutes" )
     dialog.Show()
     retVal = 0
     while true
-        dlgMsg = wait(2000, dialog.GetMessagePort())
-        if (type(dlgMsg) = "roMessageDialogEvent") then
-            if (dlgMsg.isButtonPressed()) then
-                if (dlgMsg.GetIndex() = 1) then
+        dlgMsg = wait( 2000, dialog.GetMessagePort() )
+        if ( type (dlgMsg ) = "roMessageDialogEvent" ) then
+            if ( dlgMsg.isButtonPressed() ) then
+                if ( dlgMsg.GetIndex() = -1 ) then
                     retVal = -1
-                else if (dlgMsg.GetIndex() = 2) then
-                    ' 1800 seconds = 30 minutes
-                    retVal = 1800
-                else if (dlgMsg.GetIndex() = 3) then
-                    ' 3600 seconds = 60 minutes
-                    retVal = 3600
-                else if (dlgMsg.GetIndex() = 4) then
-                    ' 5400 seconds = 90 minutes
-                    retVal = 5400
+                else
+                    retVal = dlgMsg.GetIndex() * 60
                 end if
                 exit while
-            else if (dlgMsg.isScreenClosed()) then
+            else if ( dlgMsg.isScreenClosed() ) then
                 exit while
             end if
         else if (dlgMsg = invalid) then
