@@ -809,10 +809,13 @@ Function DisplayVideo(content As Object)
     video.SetPositionNotificationPeriod(5)
 
     yt = LoadYouTube()
-
+    ' Need to add the SSL cert to the video screen if in https
+    if ( content["SSL"] = true ) then
+        video.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+        video.InitClientCertificates()
+    end if
     video.SetContent(content)
     video.show()
-
     ret = -1
     while (true)
         msg = wait(0, video.GetMessagePort())
@@ -867,8 +870,12 @@ End Function
 
 Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
     video["Streams"].Clear()
+    isSSL = false
     if (Left(LCase(video["ID"]), 4) = "http") then
         url = video["ID"]
+        if ( Left( LCase( url ), 5) = "https" ) then
+            isSSL = true
+        end if
     else
         url = "http://www.youtube.com/get_video_info?el=detailpage&video_id=" + video["ID"]
     end if
@@ -878,6 +885,10 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     ut.SetPort(port)
     ut.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0")
     ut.AddHeader("Cookie", loginCookie)
+    if ( isSSL = true ) then
+        ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+        ut.InitClientCertificates()
+    end if
     ut.SetUrl(url)
     if (ut.AsyncGetToString()) then
         while (true)
@@ -894,21 +905,39 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
             end if
         end while
     end if
-    urlEncodedFmtStreamMap = CreateObject("roRegex", "url_encoded_fmt_stream_map=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
+    video["SSL"] = isSSL
+
+    urlEncodedRegex = CreateObject("roRegex", "url_encoded_fmt_stream_map=([^(" + Chr(34) + "|&|$)]*)", "ig")
+    commaRegex = CreateObject("roRegex", "%2C", "ig")
+    ampersandRegex = CreateObject("roRegex", "%26", "ig")
+    equalsRegex = CreateObject("roRegex", "%3D", "ig")
+
+    if ( video["Source"] = "GDrive" ) then
+        urlEncodedRegex = CreateObject( "roRegex", Chr(34) + "url_encoded_fmt_stream_map" + Chr(34) + "\:" + Chr(34) + "([^(" + Chr(34) + "|&|$)]*)" + Chr(34), "ig" )
+        commaRegex = CreateObject( "roRegex", ",", "g" )
+        ampersandRegex = CreateObject( "roRegex", "\\u0026", "ig" )
+        equalsRegex = CreateObject( "roRegex", "\\u003D", "ig" )
+    end if
+
+    urlEncodedFmtStreamMap = urlEncodedRegex.Match( htmlString )
+
     if (urlEncodedFmtStreamMap.Count() > 1) then
         if (not(strTrim(urlEncodedFmtStreamMap[1]) = "")) then
-            commaSplit = CreateObject("roRegex", "%2C", "").Split(urlEncodedFmtStreamMap [1])
+            commaSplit = commaRegex.Split( urlEncodedFmtStreamMap[1] )
             hasHD = false
             fullHD = false
             for each commaItem in commaSplit
+                'print("CommaItem: " + commaItem)
                 pair = {itag: "", url: "", sig: ""}
-                ampersandSplit = CreateObject("roRegex", "%26", "").Split(commaItem)
+                ampersandSplit = ampersandRegex.Split( commaItem )
                 for each ampersandItem in ampersandSplit
-                    equalsSplit = CreateObject("roRegex", "%3D", "").Split(ampersandItem)
+                    'print("ampersandItem: " + ampersandItem)
+                    equalsSplit = equalsRegex.Split( ampersandItem )
                     if (equalsSplit.Count() = 2) then
                         pair[equalsSplit [0]] = equalsSplit [1]
                     end if
                 end for
+                'printAA( pair )
                 if (pair.url <> "" and Left(LCase(pair.url), 4) = "http") then
                     if (pair.sig <> "") then
                         signature = "&signature=" + pair.sig
@@ -916,15 +945,18 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                         signature = ""
                     end if
                     urlDecoded = ut.Unescape(ut.Unescape(pair.url + signature))
-                    ' print "urlDecoded: " ; urlDecoded
                     ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
                     if (pair.itag = "18") then
                         ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
                         video["Streams"].Push({url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag})
+                        'printAA( pair )
+                        'print "urlDecoded: " ; urlDecoded
                     else if (pair.itag = "22") then
                         ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
                         video["Streams"].Push({url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag})
                         hasHD = true
+                        'printAA( pair )
+                        'print "urlDecoded: " ; urlDecoded
                     else if (pair.itag = "37") then
                         ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
                         video["Streams"].Push({url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag })
@@ -1004,6 +1036,8 @@ Function video_get_qualities(video as Object) As Integer
     if ( video["Streams"] <> invalid ) then
         source = video["Source"]
         if ( source = invalid OR source = "YouTube" ) then
+            getYouTubeMP4Url( video )
+        else if ( source = "GDrive" ) then
             getYouTubeMP4Url( video )
         else if ( source = "Gfycat" ) then
             getGfycatMP4Url( video )

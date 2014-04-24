@@ -177,19 +177,22 @@ End Function
 ' @return an roList of video objects that are from YouTube AND have a valid video ID associated
 '******************************************************************************
 Function NewRedditVideoList(jsonObject As Object) As Object
-    videoList = CreateObject("roList")
+    videoList = CreateObject( "roList" )
     for each record in jsonObject
-        domain = LCase(record.data.domain).Trim()
+        domain = LCase( record.data.domain ).Trim()
         supported = false
         if ( domain = "youtube.com" OR domain = "youtu.be" ) then
-            video = NewRedditVideo(record)
+            video = NewRedditVideo( record )
+            supported = true
+        else if ( domain = "docs.google.com" OR domain = "drive.google.com" ) then
+            video = NewRedditVideo( record, "GDrive" )
             supported = true
         else if ( domain = "gfycat.com" ) then
             video = NewRedditGfycatVideo( record )
             supported = true
         end if
         if ( supported = true AND video["ID"] <> invalid AND video["ID"] <> "" ) then
-            videoList.Push(video)
+            videoList.Push( video )
         end if
     next
     return videoList
@@ -229,13 +232,20 @@ End Function
 ' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
-Function NewRedditVideo(jsonObject As Object) As Object
+Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As Object
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
     yt = LoadYouTube()
     ytMatches = yt.ytIDRegex.Match( decodedUrl )
-    id = invalid
+    url = jsonObject.data.url
+    if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
+        url = jsonObject.data.media.oembed.url
+    end if
+    video["URL"] = url
+
+    id = url
+
     if ( ytMatches.Count() > 1 ) then
         ' Default the PlayStart, since it is read later on
         video["PlayStart"] = 0
@@ -259,7 +269,7 @@ Function NewRedditVideo(jsonObject As Object) As Object
         end if
         id = ytMatches[1]
     end if
-    video["Source"]        = "YouTube"
+    video["Source"]        = source
     video["ID"]            = id
     video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
     video["Category"]      = "/r/" + jsonObject.data.subreddit
@@ -280,11 +290,6 @@ Function NewRedditVideo(jsonObject As Object) As Object
         thumb = jsonObject.data.thumbnail
     end if
     video["Thumb"]         = thumb
-    url = jsonObject.data.url
-    if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
-        url = jsonObject.data.media.oembed.url
-    end if
-    video["URL"]           = url
     return video
 End Function
 
