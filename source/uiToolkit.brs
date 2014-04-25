@@ -37,6 +37,13 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
 
     screen.SetContentList(posterdata)
     idx% = 0
+
+    ' If the first item is a button, and the 2nd item isn't a button, select the 2nd item.
+    if ( posterdata[0]["action"] <> invalid AND posterdata.Count() > 1 AND posterdata[1]["action"] = invalid ) then
+        idx% = 1
+        screen.SetFocusedListItem( idx% )
+    end if
+
     while (true)
         msg = wait(2000, screen.GetMessagePort())
 
