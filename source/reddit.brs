@@ -358,7 +358,8 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["TitleSeason"]            = video["Title"]
         meta["Title"]                  = "[" + video["Source"] + "] Score: " + tostr(video["Score"])
         meta["Actors"]                 = meta["Title"]
-        meta["Description"]            = video["Description"]
+        meta["FullDescription"]        = video["Description"]
+        meta["Description"]            = Left( video["Description"], 300 )
         meta["Categories"]             = video["Category"]
         meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
         meta["ShortDescriptionLine2"]  = meta["Title"]

@@ -393,7 +393,11 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                     return 1 ' Re-open the options
                 else if ( dlgMsg.GetIndex() = detailsId ) then
                     dialog.Close()
-                    uitkTextScreen( "Full Description", videoObj["TitleSeason"], videoObj["Description"] )
+                    descr = videoObj["Description"]
+                    if ( videoObj["FullDescription"] <> invalid ) then
+                        descr = videoObj["FullDescription"]
+                    end if
+                    uitkTextScreen( "Full Description", videoObj["TitleSeason"], descr )
                     return 0
                 else if (dlgMsg.GetIndex() = doneId) then
                     dialog.Close()

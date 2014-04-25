@@ -498,7 +498,8 @@ Function GetVideoMetaData(videos As Object)
         meta["TitleSeason"]            = video["Title"]
         meta["Title"]                  = video["Author"] + "  - " + get_length_as_human_readable(video["Length"])
         meta["Actors"]                 = meta["Author"]
-        meta["Description"]            = video["Description"]
+        meta["FullDescription"]        = video["Description"]
+        meta["Description"]            = Left( video["Description"], 300 )
         meta["Categories"]             = video["Category"]
         meta["StarRating"]             = video["Rating"]
         meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
@@ -1104,6 +1105,7 @@ Sub AddHistory_impl(video as Object)
     ' Make sure all the existing history items' Streams array is cleared
     ' and all of the descriptions are truncated before storing to the registry
     descs = {}
+    fullDescs = {}
     for each vid in m.history
         if ( islist( vid["Streams"] ) ) then
             vid["Streams"].Clear()
@@ -1111,11 +1113,13 @@ Sub AddHistory_impl(video as Object)
             vid["Streams"] = []
         end if
         descs[vid["ID"]] = vid["Description"]
+        fullDescs[vid["ID"]] = vid["FullDescription"]
 
         if ( Len(descs[vid["ID"]]) > 50 ) then
             ' Truncate the description field for storing in the registry
             vid["Description"] = Left(descs[vid["ID"]], 50) + "..."
         end if
+        vid["FullDescription"] = ""
     end for
 
     historyString = m.regexNewline.ReplaceAll( SimpleJSONArray(m.history), "")
@@ -1126,6 +1130,7 @@ Sub AddHistory_impl(video as Object)
     ' Load the non-truncated descriptions
     for each vid in m.history
         vid["Description"] = descs[vid["ID"]]
+        vid["FullDescription"] = fullDescs[vid["ID"]]
     end for
 End Sub
 
