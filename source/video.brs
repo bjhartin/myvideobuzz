@@ -327,6 +327,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
         screen.showMessage("Loading...")
     end if
+    previousTitle = m.CurrentPageTitle
     m.CurrentPageTitle = title
 
     if (categoryData <> invalid) then
@@ -349,7 +350,6 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                     return []
                 end if
             end function]
-
 
         onclick_callback = [categoryData.categories, m,
             function(categories, youtube, video, category_idx, set_idx)
@@ -392,6 +392,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
     else
         uitkDoMessage("No videos found.", screen)
     end if
+    m.CurrentPageTitle = previousTitle
 End Sub
 
 '********************************************************************
