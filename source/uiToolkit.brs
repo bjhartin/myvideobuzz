@@ -450,7 +450,7 @@ Function SleepTimerClicked() as Integer
         if ( type (dlgMsg ) = "roMessageDialogEvent" ) then
             if ( dlgMsg.isButtonPressed() ) then
                 if ( dlgMsg.GetIndex() = -1 ) then
-                    retVal = -1
+                    retVal = -100
                 else
                     retVal = dlgMsg.GetIndex() * 60
                 end if
