@@ -427,7 +427,11 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
         else
             category.title = record.GetNamedElements("title").GetText()
         end if
-        category.link   = validstr(record.content@src)
+        if (record.GetNamedElements("yt:channelId").Count() > 0) then
+            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50"
+        else
+            category.link   = validstr(record.content@src)
+        end if
 
         if (record.GetNamedElements("yt:unreadCount").Count() > 0) then
             category.unreadCount% = record.GetNamedElements("yt:unreadCount").GetText().toInt()
