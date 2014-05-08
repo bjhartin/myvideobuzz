@@ -818,6 +818,7 @@ Function DisplayVideo(content As Object)
     ' Need to add the SSL cert to the video screen if in https
     if ( content["SSL"] = true ) then
         video.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+        video.SetCertificatesDepth( 3 )
         video.InitClientCertificates()
     end if
     video.SetContent(content)
@@ -893,6 +894,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     ut.AddHeader("Cookie", loginCookie)
     if ( isSSL = true ) then
         ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+        ut.SetCertificatesDepth( 3 )
         ut.InitClientCertificates()
     end if
     ut.SetUrl(url)

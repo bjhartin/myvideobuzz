@@ -124,23 +124,135 @@ Function uitkPreShowListMenu(breadA=invalid, breadB=invalid) As Object
     return screen
 end function
 
-Sub uitkTextScreen( title as String, headerText as String, text as String )
-    port = CreateObject( "roMessagePort" )
-    screen = CreateObject( "roTextScreen" )
-    screen.SetMessagePort( port )
-    screen.SetTitle( title )
-    screen.SetText( "Title: " + headerText + Chr(13) + Chr(13) + "Description:" + Chr(13) + text )
-    screen.Show()
+Function determinePageEnd( start% as Integer, text as String ) as Integer
+    maxLines% = 9
+    lines% = 0
+    curPos% = start%
+    textLen% = len( text )
+    while ( curPos% < textLen% AND lines% <= maxLines% )
+        ' Find the first instance of a newline character
+        nextPos% = instr( curPos%, text, Chr(10) )
+        ' If the newline was found
+        if ( nextPos% <> 0 ) then
+            diff% = nextPos% - curPos%
+            ' max 80 chars per line
+            preLines% = lines%
+            lines% = lines% + ( diff% / 80 ) + 1
+            ' print( tostr( diff% ) + "] Next line(s): [" + tostr( lines% ) + "] " + Mid( text, curPos%, diff% ) )
 
-    while ( true )
-        msg = wait( 2000, port )
-        if ( type( msg ) = "roTextScreenEvent" ) then
-            if ( msg.isScreenClosed() ) then
-                exit while
+            if ( lines% < maxLines% ) then
+                ' If we're under the max # of lines, move the current position past the last found newline
+                curPos% = nextPos% + 1
+            else if ( lines% = maxLines% ) then
+                ' If we're at the max # of lines, just return the current position of the newline
+                curPos% = nextPos%
+            else
+                ' If we're over the max # of lines, determine the position that will fit on the screen.
+                diffLines% = maxLines% - preLines%
+                'print("diffLines: " + tostr(diffLines%) + " curpos: " + tostr(curPos%))
+                curPos% = curPos% + ( 80 * diffLines% )
             end if
-        else if ( msg = invalid ) then
-            CheckForMCast()
+        else if ( (textLen% - curPos%) > (80 * maxLines%) ) then
+            lines% = maxLines%
+            curPos% = curPos% + (80 * maxLines%)
+            exit while
+        else
+            exit while
         end if
+    end while
+    if ( lines% = 0 ) then
+        return 0
+    else
+        if ( curPos% > textLen% ) then
+            return textLen%
+        else
+            return curPos%
+        end if
+    end if
+End Function
+
+Sub uitkTextScreen( title as String, headerText as String, text as String )
+    regexNL = CreateObject( "roRegex", "\n{3,}", "ig" )
+    port = CreateObject( "roMessagePort" )
+    text = regexNL.ReplaceAll( text, Chr(10) + Chr(10) )
+
+    continueLoop = true
+    curPage% = 0
+    pageData = []
+    start% = 1
+    res% = determinePageEnd( start%, text )
+    while ( res% <> 0 )
+        pageData.push( {p: start%, n: res% - start% } )
+        ' print("Pushing: p: " + tostr( start% ) + " n: " + tostr(res% - start%) )
+        start% = res% + 1
+        res% = determinePageEnd( start%, text )
+    end while
+    maxPages% = pageData.Count()
+    prevScreen = invalid
+    while ( continueLoop )
+        screen = CreateObject( "roParagraphScreen" )
+        screen.SetMessagePort( port )
+        screen.SetTitle( title )
+        screen.AddParagraph( "Title: " + headerText )
+
+        if ( maxPages% > 1 ) then
+            if ( curPage% = (maxPages% - 1) ) then
+                screen.AddParagraph( Mid( text, pageData[curPage%].p ) )
+            else
+                screen.AddParagraph( Mid( text, pageData[curPage%].p, pageData[curPage%].n ) )
+            end if
+
+            if ( curPage% <> (maxPages% - 1) ) then
+                screen.AddButton( 0, "More" )
+            end if
+            if ( curPage% > 0 ) then
+                screen.AddButton( 1, "Previous" )
+            end if
+        else
+            maxPages% = 1
+            screen.AddParagraph( text )
+        end if
+        screen.AddButton( 2, "Close (" + tostr( curPage% + 1 ) + "/" + tostr( maxPages% ) + ")" )
+        screen.Show()
+        if ( prevScreen <> invalid ) then
+            prevScreen.close()
+            prevScreen = invalid
+        end if
+        blockClosing = false
+        while ( true )
+            msg = wait( 2000, port )
+            if ( type( msg ) = "roParagraphScreenEvent" ) then
+                if ( msg.isScreenClosed() ) then
+                    if ( NOT( blockClosing) ) then
+                        continueLoop = false
+                    end if
+                    exit while
+                else if ( msg.isButtonPressed() ) then
+                    btnIndex% = msg.GetIndex()
+                    blockClosing = true
+
+                    if ( btnIndex% = 0 ) then
+                        ' More button
+                        curPage% = curPage% + 1
+                    else if ( btnIndex% = 1 ) then
+                        ' Previous button
+                        curPage% = curPage% - 1
+                    else if ( btnIndex% = 2 ) then
+                        ' Close button
+                        curPage% = curPage% + 1
+                        blockClosing = false
+                    end if
+                    if ( NOT( blockClosing ) ) then
+                        screen.close()
+                    else
+                        prevScreen = screen
+                        exit while
+                    end if
+                end if
+            else if ( msg = invalid ) then
+                CheckForMCast()
+            end if
+        end while
     end while
 End Sub
 
