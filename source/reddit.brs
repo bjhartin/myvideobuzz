@@ -190,6 +190,9 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         else if ( domain = "gfycat.com" ) then
             video = NewRedditGfycatVideo( record )
             supported = true
+        else if ( domain = "liveleak.com" ) then
+            video = NewRedditLiveleakVideo( record )
+            supported = true
         end if
         if ( supported = true AND video["ID"] <> invalid AND video["ID"] <> "" ) then
             videoList.Push( video )
@@ -340,6 +343,47 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
 End Function
 
 '******************************************************************************
+' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
+' This function handles LiveLeak videos
+' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
+' @return an roAssociativeArray of metadata for the current result
+'******************************************************************************
+Function NewRedditLiveleakVideo(jsonObject As Object) As Object
+    video               = CreateObject("roAssociativeArray")
+    ' The URL needs to be decoded prior to attempting to match
+    decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
+
+    ' Default the PlayStart, since it is read later on
+    video["PlayStart"] = 0
+    video["Source"]        = "LiveLeak"
+    video["ID"]            = decodedUrl
+    video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
+    video["Category"]      = "/r/" + jsonObject.data.subreddit
+    desc = ""
+    if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
+        desc = jsonObject.data.media.oembed.description
+    end if
+    if ( desc = invalid ) then
+        desc = ""
+    end if
+    video["Description"]   = htmlDecode( desc )
+    video["Linked"]        = []
+    video["Score"]         = jsonObject.data.score
+    thumb = ""
+    if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
+        thumb = jsonObject.data.media.oembed.thumbnail_url
+    else
+        thumb = jsonObject.data.thumbnail
+    end if
+    if ( thumb = "default" or thumb = "nsfw" ) then
+        thumb = invalid
+    end if
+    video["Thumb"]         = thumb
+    video["URL"]           = decodedUrl + "&ajax=1"
+    return video
+End Function
+
+'******************************************************************************
 ' Custom metadata function needed to simplify displaying of content metadata for reddit results.
 ' This is necessary since the amount of metadata available for videos is much less than that available
 ' when querying YouTube directly.
@@ -370,6 +414,7 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["Linked"]                 = video["Linked"]
         meta["PlayStart"]              = video["PlayStart"]
         meta["Source"]                 = video["Source"]
+        meta["URL"]                    = video["URL"]
         metadata.Push(meta)
     end for
 

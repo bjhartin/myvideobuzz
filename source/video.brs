@@ -1039,6 +1039,53 @@ Function getGfycatMP4Url(video as Object, timeout = 0 as Integer, loginCookie = 
     return video["Streams"]
 end function
 
+Function getLiveleakMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
+    video["Streams"].Clear()
+
+    if ( video["ID"] <> invalid ) then
+        liveleakMP4UrlRegex = CreateObject( "roRegex", "file\:\s\" + Quote() + "(.*)&ec_rate", "ig" )
+        liveleakMP4HDUrlRegex = CreateObject( "roRegex", "hd_file_url\=(.*)\%26ec_rate", "ig" )
+        url = video["URL"]
+        port = CreateObject( "roMessagePort" )
+        ut = CreateObject( "roUrlTransfer" )
+        ut.SetPort( port )
+        ut.AddHeader( "User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0" )
+        ut.AddHeader( "Cookie", loginCookie )
+        ut.SetUrl( url )
+        if ( ut.AsyncGetToString() ) then
+            while ( true )
+                msg = Wait( timeout, port )
+                if ( type(msg) = "roUrlEvent" ) then
+                    status = msg.GetResponseCode()
+                    if ( status = 200 ) then
+                        responseString = msg.GetString()
+                        matches = liveleakMP4UrlRegex.Match( responseString )
+                        if ( matches <> invalid AND matches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 512, quality: false, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                        end if
+
+                        hdmatches = liveleakMP4HDUrlRegex.Match( responseString )
+                        if ( hdmatches <> invalid AND hdmatches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( hdmatches[1] ) ), bitrate: 2969, quality: true, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                            video["HDBranded"] = true
+                            video["IsHD"] = true
+                        end if
+                    end if
+                    exit while
+                else if ( type(msg) = "Invalid" ) then
+                    ut.AsyncCancel()
+                    exit while
+                end if
+            end while
+        end if
+    end if
+    return video["Streams"]
+end function
+
 
 Function video_get_qualities(video as Object) As Integer
     if ( video["Streams"] <> invalid ) then
@@ -1049,6 +1096,8 @@ Function video_get_qualities(video as Object) As Integer
             getYouTubeMP4Url( video )
         else if ( source = "Gfycat" ) then
             getGfycatMP4Url( video )
+        else if ( source = "LiveLeak" ) then
+            getLiveleakMP4Url( video )
         end if
 
         if ( video["Streams"].Count() > 0 ) then
