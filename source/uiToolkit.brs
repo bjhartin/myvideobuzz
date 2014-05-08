@@ -482,8 +482,10 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
         detailsId = 3
     end if
     dialog.addButton( sleepId, "Set Sleep Timer" )
-    dialog.addButton( detailsId, "View Full Description" )
-    dialog.addButton( doneId, "Done")
+    if ( videoObj["Description"] <> invalid AND len( videoObj["Description"] ) > 0 ) then
+        dialog.addButton( detailsId, "View Full Description" )
+    end if
+    dialog.addButton( doneId, "Done" )
     dialog.Show()
     while true
         dlgMsg = wait(2000, dialog.GetMessagePort())
