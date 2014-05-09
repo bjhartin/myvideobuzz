@@ -12,8 +12,12 @@
 '     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
 '******************************************************************************
 Sub ViewReddits(youtube as Object, url = "videos" as String)
-    screen = uitkPreShowPosterMenu("flat-episodic-16x9", "Reddit")
-    screen.showMessage("Loading subreddits...")
+    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", "Reddit" )
+    screen.showMessage( "Loading subreddits..." )
+    ' Added for https thumbnail support.
+    screen.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+    screen.SetCertificatesDepth( 3 )
+    screen.InitClientCertificates()
     title = "Reddit"
     categories = RedditCategoryList()
     if (url = "videos") then
@@ -43,40 +47,44 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
     ' Function that runs when a video/action arrow is selected
     onclick_callback = [categories, youtube,
         function(categories, youtube, video, category_idx, set_idx)
-            if (video[set_idx]["action"] <> invalid) then
-                linksList = categories[category_idx].links
+            if (video[set_idx] <> invalid) then
+                if (video[set_idx]["action"] <> invalid) then
+                    linksList = categories[category_idx].links
 
-                if (video[set_idx]["action"] = "next") then
-                    ' Last item is the next item link
-                    theLink = linksList.Peek()
-                else
-                    ' Previous button - should only be visible if there are at least 3 items in the list
-                    ' The last item at this point is the 'next link'
-                    ' The second to last item is the current URL
-                    ' The third-to-last item is the previous URL
-
-                    ' This pops off the 'next link' which can be thrown away if we are going to the previous results
-                    linksList.Pop()
-                    if ( linksList.Count() > 1 ) then
-                        ' This pops off the 'current URL' which can be thrown away if we are going to the previous results, since it will
-                        ' be re-added via the doQuery call
-                        linksList.Pop()
-                        ' The final item is the previous item we meant to go view
+                    if (video[set_idx]["action"] = "next") then
+                        ' Last item is the next item link
                         theLink = linksList.Peek()
                     else
-                        ' If there is one item left in the list, leave it alone since it is the initial subreddit link
-                        theLink = linksList.Peek()
+                        ' Previous button - should only be visible if there are at least 3 items in the list
+                        ' The last item at this point is the 'next link'
+                        ' The second to last item is the current URL
+                        ' The third-to-last item is the previous URL
+
+                        ' This pops off the 'next link' which can be thrown away if we are going to the previous results
+                        linksList.Pop()
+                        if ( linksList.Count() > 1 ) then
+                            ' This pops off the 'current URL' which can be thrown away if we are going to the previous results, since it will
+                            ' be re-added via the doQuery call
+                            linksList.Pop()
+                            ' The final item is the previous item we meant to go view
+                            theLink = linksList.Peek()
+                        else
+                            ' If there is one item left in the list, leave it alone since it is the initial subreddit link
+                            theLink = linksList.Peek()
+                        end if
                     end if
+                    if ( theLink = invalid ) then
+                        theLink = categories[category_idx].link
+                    end if
+                    ' Include a Back button, if there is more than one item left in the list
+                    previous = linksList.Count() > 1
+                    return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
+                else
+                    youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
+                    return { isContentList: false, content: video }
                 end if
-                if ( theLink = invalid ) then
-                    theLink = categories[category_idx].link
-                end if
-                ' Include a Back button, if there is more than one item left in the list
-                previous = linksList.Count() > 1
-                return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
             else
-                youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
-                return { isContentList: false, content: video }
+                print("Invalid video data")
             end if
         end function]
         uitkDoCategoryMenu(categoryList, screen, oncontent_callback, onclick_callback, onplay_callback)
@@ -191,7 +199,11 @@ Function NewRedditVideoList(jsonObject As Object) As Object
             video = NewRedditGfycatVideo( record )
             supported = true
         else if ( domain = "liveleak.com" ) then
-            video = NewRedditLiveleakVideo( record )
+            video = NewRedditURLVideo( record, "LiveLeak" )
+            video["URL"] = video["URL"] + "&ajax=1"
+            supported = true
+        else if ( domain = "vine.co" ) then
+            video = NewRedditURLVideo( record, "Vine" )
             supported = true
         end if
         if ( supported = true AND video["ID"] <> invalid AND video["ID"] <> "" ) then
@@ -344,18 +356,18 @@ End Function
 
 '******************************************************************************
 ' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
-' This function handles LiveLeak videos
+' This function handles sites that require parsing a response for an MP4 URL (LiveLeak, Vine)
 ' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
-Function NewRedditLiveleakVideo(jsonObject As Object) As Object
+Function NewRedditURLVideo(jsonObject As Object, Source as String) As Object
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
 
     ' Default the PlayStart, since it is read later on
     video["PlayStart"] = 0
-    video["Source"]        = "LiveLeak"
+    video["Source"]        = Source
     video["ID"]            = decodedUrl
     video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
     video["Category"]      = "/r/" + jsonObject.data.subreddit
@@ -369,7 +381,12 @@ Function NewRedditLiveleakVideo(jsonObject As Object) As Object
     video["Description"]   = htmlDecode( desc )
     video["Linked"]        = []
     video["Score"]         = jsonObject.data.score
-    thumb = ""
+    thumb = invalid
+    'if ( jsonObject.data.thumbnail <> invalid ) then
+    '    thumb = jsonObject.data.thumbnail
+    'else if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
+    '    thumb = jsonObject.data.media.oembed.thumbnail_url
+    'end if
     if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
         thumb = jsonObject.data.media.oembed.thumbnail_url
     else
@@ -379,7 +396,7 @@ Function NewRedditLiveleakVideo(jsonObject As Object) As Object
         thumb = invalid
     end if
     video["Thumb"]         = thumb
-    video["URL"]           = decodedUrl + "&ajax=1"
+    video["URL"]           = decodedUrl
     return video
 End Function
 
