@@ -13,6 +13,8 @@ Function InitYouTube() As Object
     this.prefix = this.scope + "/feeds/api"
     this.currentURL = ""
     this.searchLengthFilter = ""
+    this.ytusername = invalid
+
     tmpLength = RegRead("length", "Search")
     if (tmpLength <> invalid) then
         this.searchLengthFilter = tmpLength
@@ -34,8 +36,9 @@ Function InitYouTube() As Object
     this.video        = invalid
 
     'API Calls
-    this.ExecServerAPI = youtube_exec_api
+    this.ExecServerAPI = ExecServerAPI_impl
     this.ExecBatchQuery = ExecBatchQuery_impl
+    this.ExecBatchQuerySubs = ExecBatchQuerySubs_impl
 
     'Search
     this.SearchYouTube = youtube_search
@@ -107,6 +110,9 @@ Function InitYouTube() As Object
     this.reversed_playlist = false
 
     this.sleep_timer = -100
+
+    this.WhatsNewLastQueried% = 0
+    this.WhatsNewVideos = invalid
     return this
 End Function
 
@@ -131,9 +137,62 @@ Sub ExecBatchQuery_impl( xmlContent as String )
     m.FetchVideoList( request, "Videos Linked in Description", invalid )
 End Sub
 
-Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
-    'oa = Oauth()
+Sub ExecBatchQuerySubs_impl()
+    dateObj = CreateObject( "roDateTime" )
+    dateObj.Mark()
+    curDateSecs% = dateObj.AsSeconds()
+    twoDaysinSecs% = 172800
+    title = "What's New"
+    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", title )
+    screen.showMessage( "Building list... this may take some time!" )
+    ' Try to reduce queries, by limiting updates to only every 30 minutes
+    if ( (curDateSecs% - m.WhatsNewLastQueried% > 1800) OR (m.WhatsNewVideos = invalid) )
+        m.WhatsNewVideos = []
+        m.WhatsNewLastQueried% = curDateSecs%
+        response = m.ExecServerAPI( "subscriptions?v=2&max-results=50", m.ytusername )
+        ' printany(1, "Response: ", response)
+        if (response.status = 403) then
+            ShowErrorDialog( title + " may be private, or unavailable at this time. Try again.", "403 Forbidden" )
+            return
+        end if
+        if ( not( isxmlelement( response.xml ) ) ) then
+            ShowConnectionFailed()
+            return
+        end if
+        xml = response.xml
+        categories = m.CategoriesListFromXML( xml.entry, "10" )
 
+        for each category in categories
+            if ( category.unreadCount% > 0 ) then
+                vids = m.ReturnVideoList( category.link, invalid, invalid, false )
+                for each vid in vids
+                    if ( curDateSecs% - vid.DateSeconds < twoDaysinSecs% ) then
+                        m.WhatsNewVideos.Push( vid )
+                    end if
+                end for
+            end if
+        end for
+
+        Sort( m.WhatsNewVideos, Function(vid as Object) as Integer
+                return vid.DateSeconds
+            End Function )
+        while ( m.WhatsNewVideos.Count() > 50 )
+            m.WhatsNewVideos.Pop()
+        end while
+        'for each vid in vidList
+        '    print ("Vid title: " + vid.TitleSeason + " published: " + tostr( vid.DateSeconds ) )
+        'end for3
+    end if
+    if ( m.WhatsNewVideos.Count() = 0 ) then
+        screen.showMessage( "No New Videos!" )
+    end if
+    m.DisplayVideoListFromVideoList(m.WhatsNewVideos, title, invalid, screen, invalid, Function(videos as Object) as Object
+                                                                                 return videos
+                                                                              End Function )
+End Sub
+
+Function ExecServerAPI_impl(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
+    'oa = Oauth()
     if (username = invalid) then
         username = ""
     else
@@ -268,6 +327,7 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
     screen.showMessage(message)
 
     response = m.ExecServerAPI(APIRequest, username)
+
     if (response.status = 403) then
         ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
         return
@@ -290,7 +350,7 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
 End Sub
 
 
-Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
+Function ReturnVideoList_impl(APIRequest As Dynamic, username As Dynamic, additionalParams = invalid as Dynamic, includeLinks = true as Boolean)
     xml = m.ExecServerAPI(APIRequest, username, additionalParams)["xml"]
     if (not(isxmlelement(xml))) then
         ShowConnectionFailed()
@@ -300,7 +360,7 @@ Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username A
     videos = m.newVideoListFromXML(xml.entry)
     metadata = GetVideoMetaData(videos)
 
-    if (xml.link <> invalid) then
+    if ( (includeLinks = true) AND (xml.link <> invalid) ) then
         for each link in xml.link
             if (link@rel = "next") then
                 metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
@@ -345,7 +405,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                         additionalParams = []
                         additionalParams.push( { name: "orderby", value: "reversedPosition" } )
                     end if
-                    return youtube.ReturnVideoList(categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams)
+                    return youtube.ReturnVideoList(categories[set_idx].link, invalid, additionalParams)
                 else
                     return []
                 end if
@@ -354,7 +414,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         onclick_callback = [categoryData.categories, m,
             function(categories, youtube, video, category_idx, set_idx)
                 if (video[set_idx]["action"] <> invalid) then
-                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid) }
+                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], invalid ) }
                 else
                     youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
                     return { isContentList: false, content: video}
@@ -416,7 +476,7 @@ End Sub
 '           title
 '           link
 '********************************************************************
-Function CategoriesListFromXML_impl(xmlList As Object) As Object
+Function CategoriesListFromXML_impl(xmlList As Object, maxResults = "50" as String) As Object
     'print "CategoriesListFromXML_impl init"
     categoryList  = CreateObject("roList")
     for each record in xmlList
@@ -428,7 +488,7 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
             category.title = record.GetNamedElements("title").GetText()
         end if
         if (record.GetNamedElements("yt:channelId").Count() > 0) then
-            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50"
+            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=" + maxResults
         else
             category.link   = validstr(record.content@src)
         end if
@@ -444,7 +504,7 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
             links = record.link
             for each link in links
                 if (Instr(1, link@rel, "user.uploads") > 0) then
-                    category.link = validstr(link@href) + "&max-results=50"
+                    category.link = validstr(link@href) + "&max-results=" + maxResults
                 end if
             next
         end if
@@ -485,6 +545,7 @@ Function youtube_new_video(xml As Object) As Object
     video["Description"]    = get_desc(xml)
     video["Length"]         = GetLength_impl(xml)
     video["UploadDate"]     = GetUploadDate_impl(xml)
+    video["DateSeconds"]    = GetUploadDateSeconds_impl(xml)
     video["Rating"]         = get_xml_rating(xml)
     video["Thumb"]          = get_xml_thumb(xml)
     return video
@@ -513,6 +574,7 @@ Function GetVideoMetaData(videos As Object)
         meta["Length"]                 = video["Length"].toInt()
         meta["UserID"]                 = video["UserID"]
         meta["ReleaseDate"]            = video["UploadDate"]
+        meta["DateSeconds"]            = video["DateSeconds"]
         meta["StreamFormat"]           = "mp4"
         meta["Live"]                   = false
         meta["Streams"]                = []
@@ -563,14 +625,26 @@ Function GetUploadDate_impl(xml as Object) As Dynamic
     uploaded = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaded")
     if (uploaded.Count() > 0) then
         dateText = uploaded.GetText()
-        'dateObj = CreateObject("roDateTime")
-        ' The value from YouTube has a 'Z' at the end, we need to strip this off, or else
-        ' FromISO8601String() can't parse the date properly
-        'dateObj.FromISO8601String(Left(dateText, Len(dateText) - 1))
-        'return tostr(dateObj.GetMonth()) + "/" + tostr(dateObj.GetDayOfMonth()) + "/" + tostr(dateObj.GetYear())
         return Left(dateText, 10)
     end if
     return ""
+End Function
+
+'*******************************************
+'  Returns the date the video was uploaded, from the yt:uploaded element:
+'  <yt:uploaded>val</yt:uploaded>
+'*******************************************
+Function GetUploadDateSeconds_impl(xml as Object) As Dynamic
+    uploaded = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:uploaded")
+    if (uploaded.Count() > 0) then
+        dateText = uploaded.GetText()
+        dateObj = CreateObject("roDateTime")
+        ' The value from YouTube has a 'Z' at the end, we need to strip this off, or else
+        ' FromISO8601String() can't parse the date properly
+        dateObj.FromISO8601String(Left(dateText, Len(dateText) - 1))
+        return dateObj.AsSeconds()
+    end if
+    return 0
 End Function
 
 '*******************************************
