@@ -160,7 +160,7 @@ Sub ExecBatchQuerySubs_impl()
             return
         end if
         xml = response.xml
-        categories = m.CategoriesListFromXML( xml.entry, "10" )
+        categories = m.CategoriesListFromXML( xml.entry + "&time=this_week", "10" )
 
         for each category in categories
             if ( category.unreadCount% > 0 ) then
