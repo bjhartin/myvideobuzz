@@ -39,7 +39,7 @@ Sub youtube_search()
                     prompt = prompt + Chr(10) + "Sort: " + GetSortText(m.searchSort)
                 end if
                 ' Don't include items that require purchase to watch, since we don't have a way to pay for them!
-                query = query + "&paid-content=false"
+                query = query + "&paid-content=false&safeSearch=none"
                 dialog = ShowPleaseWait("Please wait", prompt)
                 xml = m.ExecServerAPI(query, invalid)["xml"]
                 if (not(isxmlelement(xml))) then
@@ -82,11 +82,12 @@ Function GenerateSearchSuggestions(partSearchText As String) As Object
         jsonAsString = strReplace(jsonAsString,"window.yt.www.suggest.handleResponse(","")
         jsonAsString = Left(jsonAsString, Len(jsonAsString) -1)
         response = simpleJSONParser(jsonAsString)
+        aposRegex = CreateObject( "roRegex", "\\u0027", "ig" )
 
         if (islist(response) = true) then
             if (response.Count() > 1) then
                 for each sugg in response[1]
-                        suggestions.Push(sugg[0])
+                    suggestions.Push( aposRegex.replaceAll( sugg[0], "'" ) )
                 end for
             end if
         end if
