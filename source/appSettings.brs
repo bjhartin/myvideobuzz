@@ -59,7 +59,7 @@ Sub youtube_add_account()
                     searchText = screen.GetText()
                     plxml = GetFeedXML("http://gdata.youtube.com/feeds/api/users/" + searchText + "/playlists?v=2&max-results=50")
                     if (plxml = invalid) then
-                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User Id. Please go to http://utmostsolutions.github.io/myvideobuzz/ to find your YouTube username.", "Ok")
+                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User Id. Please go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
                     else
                         RegWrite("YTUSERNAME1", searchText)
                         screen.Close()
@@ -67,7 +67,7 @@ Sub youtube_add_account()
                         return
                     end if
                 else
-                    ShowDialog1Button("Help", "Go to http://utmostsolutions.github.io/myvideobuzz/ to find your YouTube username.", "Ok")
+                    ShowDialog1Button("Help", "Go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
                 end if
             end if
         end if

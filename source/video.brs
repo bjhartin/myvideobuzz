@@ -236,22 +236,21 @@ End Function
 ' YouTube User uploads
 '********************************************************************
 Sub youtube_user_videos(username As String, userID As String)
-    m.FetchVideoList("users/"+userID+"/uploads?orderby=published", "Videos By "+username, invalid)
+    m.FetchVideoList( "users/" + userID + "/uploads?orderby=published&safeSearch=none", "Videos By " + username, invalid )
 End Sub
 
 '********************************************************************
 ' YouTube User Playlists
 '********************************************************************
 Sub BrowseUserPlaylists_impl(username As String, userID As String)
-    m.FetchVideoList("users/" + userID + "/playlists?max-results=50", username + "'s Playlists", invalid, {isPlaylist: true})
+    m.FetchVideoList( "users/" + userID + "/playlists?max-results=50&safeSearch=none", username + "'s Playlists", invalid, {isPlaylist: true} )
 End Sub
 
 '********************************************************************
 ' YouTube Related Videos
 '********************************************************************
 Sub youtube_related_videos(video As Object)
-    m.FetchVideoList("videos/"+ video["ID"] +"/related?v=2", "Related Videos", invalid)
-    'GetYTBase("videos/" + showList[showIndex].ContentId + "/related?v=2&start-index=1&max-results=50"))
+    m.FetchVideoList( "videos/" + video["ID"] + "/related?v=2&safeSearch=none", "Related Videos", invalid )
 End Sub
 
 '********************************************************************
@@ -340,12 +339,13 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
             function(categories, youtube, set_idx, reverseSort = false)
                 'PrintAny(0, "category:", categories[set_idx])
                 if (youtube <> invalid AND categories.Count() > 0) then
-                    additionalParams = invalid
+                    additionalParams = []
+                    additionalParams.push( { name: "safeSearch", value: "none" } )
                     if ( reverseSort ) then
-                        additionalParams = []
                         additionalParams.push( { name: "orderby", value: "reversedPosition" } )
                     end if
-                    return youtube.ReturnVideoList(categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams)
+                    
+                    return youtube.ReturnVideoList( categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams )
                 else
                     return []
                 end if
@@ -354,7 +354,9 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         onclick_callback = [categoryData.categories, m,
             function(categories, youtube, video, category_idx, set_idx)
                 if (video[set_idx]["action"] <> invalid) then
-                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid) }
+                    additionalParams = []
+                    additionalParams.push( { name: "safeSearch", value: "none" } )
+                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid, additionalParams ) }
                 else
                     youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
                     return { isContentList: false, content: video}
@@ -428,7 +430,7 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
             category.title = record.GetNamedElements("title").GetText()
         end if
         if (record.GetNamedElements("yt:channelId").Count() > 0) then
-            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50"
+            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50&safeSearch=none"
         else
             category.link   = validstr(record.content@src)
         end if
