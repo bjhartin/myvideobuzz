@@ -542,7 +542,7 @@ Function get_desc(xml as Object) As Dynamic
     if (desc.Count() > 0) then
         return desc[0].GetText()
     end if
-    return invalid
+    return "No description provided"
 End Function
 
 '*******************************************
@@ -638,13 +638,14 @@ Function get_xml_author(xml as Object) As Dynamic
             end if
         end for
     end if
+    return ""
 End Function
 
 Function get_xml_rating(xml as Object) As Dynamic
     if (xml.GetNamedElements("gd:rating").Count() > 0) then
         return Int(xml.GetNamedElements("gd:rating").GetAttributes()["average"].toFloat() * 20)
     end if
-    return invalid
+    return 0
 End Function
 
 Function get_xml_thumb(xml as Object) As Dynamic
@@ -657,7 +658,7 @@ Function get_xml_thumb(xml as Object) As Dynamic
         end for
         return xml.GetNamedElements("media:group")[0].GetNamedElements("media:thumbnail")[0].GetAttributes()["url"]
     end if
-    return "pkg:/images/icon_s.jpg"
+    return "pkg:/images/no_thumb.jpg"
 End Function
 
 
