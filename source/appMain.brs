@@ -45,7 +45,6 @@ Sub ShowHomeScreen()
 
     onselect = [1, menudata, m.youtube,
         function(menu, youtube, set_idx)
-            'PrintAny(0, "menu:", menu)
             if (menu[set_idx]["FeedURL"] <> invalid) then
                 feedurl = menu[set_idx]["FeedURL"]
                 youtube.FetchVideoList(feedurl,menu[set_idx]["ShortDescriptionLine1"], invalid, menu[set_idx]["categoryData"])
@@ -55,6 +54,7 @@ Sub ShowHomeScreen()
             else if (menu[set_idx]["Custom"] = true) then
                     menu[set_idx]["ViewFunc"](youtube)
             end if
+            return set_idx
         end function]
     MulticastInit(youtube)
     uitkDoPosterMenu(menudata, screen, onselect)

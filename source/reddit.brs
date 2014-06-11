@@ -80,8 +80,8 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                     previous = linksList.Count() > 1
                     return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
                 else
-                    youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
-                    return { isContentList: false, content: video }
+                    vidIdx% = youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
+                    return { isContentList: false, content: video, vidIdx: vidIdx% }
                 end if
             else
                 print("Invalid video data")

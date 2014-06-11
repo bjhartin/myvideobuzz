@@ -344,7 +344,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                     if ( reverseSort ) then
                         additionalParams.push( { name: "orderby", value: "reversedPosition" } )
                     end if
-                    
+
                     return youtube.ReturnVideoList( categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams )
                 else
                     return []
@@ -358,8 +358,8 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                     additionalParams.push( { name: "safeSearch", value: "none" } )
                     return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid, additionalParams ) }
                 else
-                    youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
-                    return { isContentList: false, content: video}
+                    vidIdx% = youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
+                    return { isContentList: false, content: video, vidIdx: vidIdx%}
                 end if
             end function]
         uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, categoryData.isPlaylist )
@@ -382,13 +382,15 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
 
         onselect = [1, metadata, m,
             function(video, youtube, set_idx)
+                retVal% = 0
                 if (video[set_idx]["func"] <> invalid) then
                     video[set_idx]["func"](youtube, video[set_idx]["pageURL"])
                 else if (video[set_idx]["action"] <> invalid) then
                     youtube.FetchVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid)
                 else
-                    youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
+                    retVal% = youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
                 end if
+                return retVal%
             end function]
         uitkDoPosterMenu(metadata, screen, onselect, onplay_callback)
     else
@@ -665,7 +667,7 @@ End Function
 '********************************************************************
 ' YouTube video details roSpringboardScreen
 '********************************************************************
-Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, idx=invalid)
+Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, idx=invalid) as Integer
     p = CreateObject("roMessagePort")
     screen = CreateObject("roSpringboardScreen")
     screen.SetMessagePort(p)
@@ -711,8 +713,11 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
                             result = video_get_qualities(selectedVideo)
                             if (result = 0) then
                                 ret = DisplayVideo(selectedVideo)
+                                m.video = videos[i]
+                                buttons = m.BuildButtons()
+                                screen.SetContent( m.video )
+                                idx = i
                                 if (ret > 0) then
-                                    buttons = m.BuildButtons()
                                     Exit For
                                 end if
                             end if
@@ -776,7 +781,8 @@ Sub VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=invalid, 
             CheckForMCast()
         end If
     end while
-End Sub
+    return idx
+End Function
 
 '********************************************************************
 ' Helper function to build the list of buttons on the springboard

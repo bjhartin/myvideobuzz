@@ -82,7 +82,8 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
                         userdata1 = onselect_callback[1]
                         userdata2 = onselect_callback[2]
                         f = onselect_callback[3]
-                        f(userdata1, userdata2, msg.GetIndex())
+                        idx% = f(userdata1, userdata2, msg.GetIndex())
+                        screen.SetFocusedListItem( idx% )
                     end if
                 else
                     return msg.GetIndex()
@@ -340,6 +341,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
         screen.clearmessage()
     end if
     screen.Show()
+
     idx% = 0
     contentdata1 = invalid
     contentdata2 = invalid
@@ -391,6 +393,13 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                         screen.Show()
                         'screen.SetFocusedListItem(msg.GetIndex())
                     end if
+                else
+                    if ( contentData.vidIdx <> invalid ) then
+                        ' If the user has changed the video selection, either via Play All
+                        ' or via the left/right buttons, change the selected video to match what they
+                        ' had selected on the details screen.
+                        screen.SetFocusedListItem( contentData.vidIdx )
+                    end if
                 end if
             else if (msg.isListItemFocused()) then
                 ' This event occurs when the user changes the selection of a video item
@@ -400,6 +409,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
             else if (msg.isRemoteKeyPressed()) then
                 ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
                 if (onplay_func <> invalid AND msg.GetIndex() = buttonCodes.BUTTON_PLAY_PRESSED) then
+                    ' Stops the annoyance when a video finishes playing and the banner gets re-selected.
+                    screen.SetFocusToFilterBanner( false )
                     onplay_func(contentlist[idx%])
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
                     reversePlaylist = m.youtube.reversed_playlist
