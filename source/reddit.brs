@@ -304,6 +304,7 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     else
         thumb = jsonObject.data.thumbnail
     end if
+    thumb = getDefaultThumb( thumb, source )
     video["Thumb"]         = thumb
     return video
 End Function
@@ -346,9 +347,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
     else
         thumb = jsonObject.data.thumbnail
     end if
-    if ( thumb = "default" or thumb = "nsfw" ) then
-        thumb = invalid
-    end if
+    thumb = getDefaultThumb( thumb, "Gfycat" )
     video["Thumb"]         = thumb
     video["URL"]           = invalid
     return video
@@ -392,12 +391,29 @@ Function NewRedditURLVideo(jsonObject As Object, Source as String) As Object
     else
         thumb = jsonObject.data.thumbnail
     end if
-    if ( thumb = "default" or thumb = "nsfw" ) then
-        thumb = invalid
-    end if
+    thumb = getDefaultThumb( thumb, source )
     video["Thumb"]         = thumb
     video["URL"]           = decodedUrl
     return video
+End Function
+
+Function getDefaultThumb( currentThumb as String, source as String ) as String
+    if ( currentThumb = invalid OR ( Len( currentThumb ) = 0 ) OR currentThumb = "default" OR currentThumb = "nsfw" ) then
+        if ( Source = "YouTube" ) then
+            currentThumb = "pkg:/images/no_thumb.jpg"
+        else if ( Source = "GDrive" ) then
+            currentThumb = "pkg:/images/GDrive.jpg"
+        else if ( Source = "Gfycat" ) then
+            currentThumb = "pkg:/images/gfycat.png"
+        else if ( Source = "LiveLeak" ) then
+            currentThumb = "pkg:/images/LiveLeak.jpg"
+        else if ( Source = "Vine" ) then
+            currentThumb = "pkg:/images/vine.jpg"
+        else
+            currentThumb = invalid
+        end if
+    end if
+    return currentThumb
 End Function
 
 '******************************************************************************
