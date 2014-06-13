@@ -73,10 +73,23 @@ Function InitYouTube() As Object
     ' History
     this.ShowHistory = ShowHistory_impl
     this.AddHistory = AddHistory_impl
+
+    ' Initialize the history member, or else the ClearHistory function could fail below
+    this.history = []
+
+    ' Version of the history.
+    ' Update when a new site is added, or when information stored in the registry might change
+    this.HISTORY_VERSION = "1"
+    regHistVer = RegRead( "HistoryVersion", "Settings" )
+    if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
+        print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
+        this.ClearHistory( false )
+        RegWrite( "HistoryVersion", this.HISTORY_VERSION, "Settings" )
+    end if
+
     ' TODO: Determine if this could be used for the reddit channel
     ' this.GetVideoDetails = GetVideoDetails_impl
     videosJSON = RegRead("videos", "history")
-    this.history = []
     this.historyLen = 0
     if ( videosJSON <> invalid AND isnonemptystr(videosJSON) ) then
         this.historyLen = Len(videosJSON)
@@ -879,7 +892,6 @@ Function DisplayVideo(content As Object)
         end if
     end while
     ' Add the video to history
-    ' Add it here
     yt.AddHistory(content)
     return ret
 End Function

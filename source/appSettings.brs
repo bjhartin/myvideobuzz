@@ -97,11 +97,13 @@ Sub youtube_about()
     end while
 End Sub
 
-Sub ClearHistory_impl()
-    RegDelete("videos", "history")
+Sub ClearHistory_impl( showDialog = true as Boolean )
+    RegDelete( "videos", "history" )
     m.history.Clear()
     m.historyLen = 0
-    ShowErrorDialog("Your video history has been cleared.", "Clear History")
+    if ( showDialog = true ) then
+        ShowErrorDialog( "Your video history has been cleared.", "Clear History" )
+    end if
 End Sub
 
 Function GetFeedXML(plurl As String) As Dynamic

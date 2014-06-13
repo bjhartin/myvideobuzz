@@ -44,8 +44,8 @@ Function RegistryDump() as integer
         s = CreateObject("roRegistrySection",section)
         keys = s.GetKeyList()
         for each key in keys
-            val = s.Read(key)
-            print "    ";key;" : "; val
+            keyVal = s.Read(key)
+            print "    " ; key ; " : " ; keyVal
         end for
     end for
     return sections.Count()
