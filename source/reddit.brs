@@ -100,7 +100,7 @@ End Sub
 Function doQuery(multireddits = "videos" as String, includePrevious = false as Boolean, categoryObject = invalid as Dynamic) as Object
     response = QueryReddit(multireddits)
     if (response.status = 403) then
-        ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
+        ShowErrorDialog(multireddits + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
         return []
     end if
     if (response.status <> 200 OR response.json = invalid OR response.json.kind <> "Listing") then
