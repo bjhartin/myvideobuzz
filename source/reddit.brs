@@ -478,7 +478,7 @@ Sub EditRedditSettings()
     screen.SetSearchButtonText("Add Subreddit")
     screen.SetEmptySearchTermsText("The reddit channel will be disabled")
     screen.Show()
-
+    filteredResults = []
     while (true)
         msg = wait(2000, port)
 
@@ -487,25 +487,16 @@ Sub EditRedditSettings()
             if (msg.isScreenClosed()) then
                 exit while
             else if (msg.isPartialResult()) then
-                ' Ignore it
+                filteredResults = filterSubreddits( subredditArray, msg.GetMessage() )
+                screen.SetSearchTerms( filteredResults )
             else if (msg.isFullResult()) then
                 ' Check to see if they're trying to add a duplicate subreddit, or empty string
-                newOne = msg.GetMessage()
-                if (Len(newOne.Trim()) > 0) then
-                    found = false
-                    for each subreddit in subredditArray
-                        if (LCase(subreddit).Trim() = LCase(newOne).Trim()) then
-                            found = true
-                            exit for
-                        end if
-                    next
-                    if (not(found)) then
-                        if (subredditArray.Count() = 0) then
-                            subredditArray = []
-                        end if
-                        subredditArray.Push(newOne)
+                newOne = msg.GetMessage().Trim()
+                if ( Len( newOne ) > 0 ) then
+                    if ( getSubredditIndex( subredditArray, newOne ) = -1 ) then
+                        subredditArray.Push( newOne )
 
-                        screen.SetSearchTerms(subredditArray)
+                        screen.SetSearchTerms( subredditArray )
                         RegDelete("enabled", "reddit")
                     end if
                     ' When the user hits 'Add Subreddit' or hits ok on a subreddit on the right side, set the search text
@@ -515,11 +506,25 @@ Sub EditRedditSettings()
             else if (msg.isCleared()) then
                 subredditArray.Clear()
                 screen.ClearSearchTerms()
-                RegWrite("enabled", "false", "reddit")
-            else if ((msg.isRemoteKeyPressed() AND msg.GetIndex() = 10) OR msg.isButtonInfo()) then
-                if (subredditArray.Count() > 0) then
-                    subredditArray.Delete(msg.GetIndex())
-                    screen.SetSearchTerms(subredditArray)
+                RegWrite( "enabled", "false", "reddit" )
+            else if ( msg.isButtonInfo() ) then
+                ' Bug: This event is fired when focus is on the buttons on the bottom of the search screen with an index of 0
+                msgIndex% = msg.GetIndex()
+                ' print "msgIndex: " ; msgIndex%
+                if ( subredditArray.Count() > 0 ) then
+                    if ( filteredResults.Count() > 0 ) then
+                        subredditIndex = getSubredditIndex( subredditArray, filteredResults[ msgIndex% ] )
+                        if ( subredditIndex <> -1 ) then
+                            filteredResults.Delete( msgIndex% )
+                            subredditArray.Delete( subredditIndex )
+                            screen.SetSearchTerms( filteredResults )
+                        else
+                            print "Couldn't match filtered subreddit to full array!"
+                        end if
+                    else
+                        subredditArray.Delete( msgIndex% )
+                        screen.SetSearchTerms( subredditArray )
+                    end if
                 end if
             'else
                 'print("Unhandled event on search screen")
@@ -537,9 +542,34 @@ Sub EditRedditSettings()
                 subString = subString + "+"
             end if
         next
-        RegWrite("subreddits", subString, "reddit")
+        RegWrite( "subreddits", subString, "reddit" )
     else
         ' If their list is empty, just remove the unused registry key
-        RegDelete("subreddits", "reddit")
+        RegDelete( "subreddits", "reddit" )
     end if
 End Sub
+
+Function getSubredditIndex( subredditArray as Object, subredditToFind as String ) as Integer
+    result = -1
+    for idx = 0 to subredditArray.Count() - 1
+        subredditText = subredditArray[ idx ]
+        if ( LCase( subredditText.Trim() ) = LCase( subredditToFind.Trim() ) ) then
+            result = idx
+            exit for
+        end if
+    next
+    return result
+End Function
+
+Function filterSubreddits( subreddits as Object, filterText as String ) as Object
+    if ( subreddits.Count() = 0 OR filterText = invalid OR Len( filterText ) = 0 ) then
+        return subreddits
+    end if
+    result = []
+    for each subreddit in subreddits
+        if ( LCase( subreddit.Trim() ).Instr( 0, LCase( filterText.Trim() ) ) <> -1 ) then
+            result.Push( subreddit )
+        end if
+    end for
+    return result
+End Function
