@@ -110,20 +110,110 @@ Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onpla
 End Function
 
 
-Function uitkPreShowListMenu(breadA=invalid, breadB=invalid) As Object
-    port = CreateObject("roMessagePort")
-    screen = CreateObject("roListScreen")
-    screen.SetMessagePort(port)
-    if (breadA <> invalid and breadB <> invalid) then
-        screen.SetBreadcrumbText(breadA, breadB)
+Sub uitkPreShowListMenu( context, content as Object, headerText as String, breadA = invalid, breadB = invalid )
+    port = CreateObject( "roMessagePort" )
+    screen = CreateObject( "roListScreen" )
+    screen.SetMessagePort( port )
+    screen.SetHeader( headerText )
+    if ( breadA <> invalid and breadB <> invalid ) then
+        screen.SetBreadcrumbText( breadA, breadB )
+    else if ( breadA <> invalid and breadB = invalid ) then
+        screen.SetBreadcrumbText( breadA, "" )
     end if
     'screen.SetListStyle("flat-category")
     'screen.SetListDisplayMode("best-fit")
     'screen.SetListDisplayMode("zoom-to-fill")
     screen.Show()
+    screen.SetContent( content )
+    while (true)
+        msg = wait(2000, screen.GetMessagePort())
 
-    return screen
-end function
+        'print "uitkDoPosterMenu | msg type = ";type(msg)
+        if (type(msg) = "roListScreenEvent") then
+            'print "event.GetType()=";msg.GetType(); " event.GetMessage()= "; msg.GetMessage()
+            if ( msg.isListItemSelected() ) then
+                index% = msg.GetIndex()
+                if ( content[ index% ].callback <> invalid ) then
+                    context[ content[ index% ].callback ]()
+                else if ( content[ index% ].prefData <> invalid ) then
+                    newBreadA = breadB
+                    if ( newBreadA = invalid ) then
+                        newBreadA = headerText
+                    end if
+                    ' Handle enum preference
+                    result = uitkEnumOptionScreen( content[ index% ].prefData, newBreadA, content[ index% ].prefData.name )
+                    if ( content[ index% ].prefData.value <> result ) then
+                        print "Preference value changed, was: " ; tostr( content[ index% ].prefData.value ); " is now: " ; tostr( result )
+                    end if
+                    content[ index% ].prefData.value = result
+                end if
+            else if (msg.isScreenClosed()) then
+                exit while
+            else if (msg.isListItemFocused()) then
+                idx% = msg.GetIndex()
+            'else if (msg.isRemoteKeyPressed()) then
+            '    ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
+            '    if (onplay_func <> invalid ) then
+            '        if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED ) then
+            '            onplay_func( posterdata[idx%] )
+            '        else if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_INFO_PRESSED ) then
+            '            while ( VListOptionDialog( false, posterdata[idx%] ) = 1 )
+            '            end while
+            '        end if
+            '    end if
+            end if
+        else if ( msg = invalid ) then
+            CheckForMCast()
+        end if
+    end while
+
+End Sub
+
+Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = invalid ) as Integer
+    port = CreateObject( "roMessagePort" )
+    screen = CreateObject( "roListScreen" )
+    screen.SetMessagePort( port )
+    screen.SetHeader( prefData.desc )
+
+    if (breadA <> invalid and breadB <> invalid) then
+        screen.SetBreadcrumbText( breadA, breadB )
+    else if (breadA <> invalid and breadB = invalid) then
+        screen.SetBreadcrumbText( breadA, "" )
+    end if
+    if ( isint( prefData.value ) ) then
+        focusedIndex% = prefData.value
+    else
+        focusedIndex% = 0
+    end if
+    returnIndex% = focusedIndex%
+
+    for each option in prefData.values
+        metadata = {
+            title: option
+        }
+        screen.AddContent( metadata )
+    next
+
+    screen.SetFocusedListItem( focusedIndex% )
+    screen.Show()
+    while (true)
+        msg = wait(2000, screen.GetMessagePort())
+
+        'print "uitkDoPosterMenu | msg type = ";type(msg)
+        if (type(msg) = "roListScreenEvent") then
+            'print "event.GetType()=";msg.GetType(); " event.GetMessage()= "; msg.GetMessage()
+            if ( msg.isListItemSelected() ) then
+                returnIndex% = msg.GetIndex()
+                exit while
+            else if (msg.isScreenClosed()) then
+                exit while
+            end if
+        else if ( msg = invalid ) then
+            CheckForMCast()
+        end if
+    end while
+    return returnIndex%
+End Function
 
 Function determinePageEnd( start% as Integer, text as String ) as Integer
     maxLines% = 9

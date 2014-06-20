@@ -851,6 +851,16 @@ Function IIf( Condition, Result1, Result2 )
     End If
 End Function
 
+Function firstValid( first as Dynamic, second as Dynamic, third = invalid as Dynamic ) as Dynamic
+    if ( first <> invalid ) then 
+        return first
+    end if
+    if ( second <> invalid ) then 
+        return second
+    end if
+    return third
+End Function
+
 Function MatchAll(regex as Object, text As String) As Object
    response = Left(text, Len(text))
    values = []

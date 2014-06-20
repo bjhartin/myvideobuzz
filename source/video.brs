@@ -23,6 +23,9 @@ Function InitYouTube() As Object
         this.searchDateFilter = tmpDate
     end if
 
+    ' Preferences object
+    this.prefs = preferences()
+
     this.searchSort = ""
     tmpSort = RegRead("sort", "Search")
     if (tmpSort <> invalid) then
@@ -68,6 +71,7 @@ Function InitYouTube() As Object
     this.About = youtube_about
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
+    this.ManageSubreddits = ManageSubreddits_impl
     this.ClearHistory = ClearHistory_impl
 
     ' History
@@ -955,6 +959,11 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
             commaSplit = commaRegex.Split( urlEncodedFmtStreamMap[1] )
             hasHD = false
             fullHD = false
+            topQuality% = -1
+            if ( m.prefs.VideoQuality.value = Constants().FORCE_LOWEST ) then
+                topQuality% = 10000
+            end if
+            streamData = invalid
             for each commaItem in commaSplit
                 'print("CommaItem: " + commaItem)
                 pair = {itag: "", url: "", sig: ""}
@@ -974,26 +983,53 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                         signature = ""
                     end if
                     urlDecoded = ut.Unescape(ut.Unescape(pair.url + signature))
-                    ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
-                    if (pair.itag = "18") then
-                        ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
-                        video["Streams"].Push({url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag})
+                    itag% = strtoi( pair.itag )
+                    if ( itag% <> invalid AND ( itag% = 18 OR itag% = 22 OR itag% = 37 ) ) then
                         'printAA( pair )
                         'print "urlDecoded: " ; urlDecoded
-                    else if (pair.itag = "22") then
-                        ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
-                        video["Streams"].Push({url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag})
-                        hasHD = true
-                        'printAA( pair )
-                        'print "urlDecoded: " ; urlDecoded
-                    else if (pair.itag = "37") then
-                        ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
-                        video["Streams"].Push({url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag })
-                        hasHD = true
-                        fullHD = true
+                        ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
+                        if ( m.prefs.VideoQuality.value <> Constants().NO_PREFERENCE ) then
+                            print "Not filtering streams"
+                            if ( itag% = 18 ) then
+                                ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
+                                video["Streams"].Push( {url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag} )
+                            else if ( itag% = 22 ) then
+                                ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
+                                video["Streams"].Push( {url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag} )
+                                hasHD = true
+                            else if ( itag% = 37 ) then
+                                ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
+                                video["Streams"].Push( {url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag } )
+                                hasHD = true
+                                fullHD = true
+                            end if
+                        else if ( ( m.prefs.VideoQuality.value = Constants().FORCE_HIGHEST AND itag% > topQuality% ) OR ( m.prefs.VideoQuality.value = Constants().FORCE_LOWEST AND itag% < topQuality% ) ) then
+                            print "Found stream with itag: " ; pair.itag
+                            if ( itag% = 18 ) then
+                                ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
+                                streamData = {url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag}
+                                topQuality% = itag%
+                            else if ( itag% = 22 ) then
+                                ' 22 is MP4 720p H.264 at 2-2.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
+                                streamData = {url: urlDecoded, bitrate: 2969, quality: true, contentid: pair.itag}
+                                hasHD = true
+                                topQuality% = itag%
+                            else if ( itag% = 37 ) then
+                                ' 37 is MP4 1080p H.264 at 3-5.9 Mbps video bitrate. I set the bitrate to the maximum, for best results.
+                                streamData = {url: urlDecoded, bitrate: 6041, quality: true, contentid: pair.itag }
+                                hasHD = true
+                                fullHD = true
+                                topQuality% = itag%
+                            end if
+                        end if
+                    else
+                        print "Tried to parse invalid itag value."
                     end if
                 end if
             end for
+            if ( streamData <> invalid ) then
+                video["Streams"].Push( streamData )
+            end if
             if (video["Streams"].Count() > 0) then
                 video["Live"]          = false
                 video["StreamFormat"]  = "mp4"

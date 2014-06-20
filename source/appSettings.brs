@@ -1,4 +1,11 @@
 
+Function preferences() as Object
+    prefs = {}
+    prefs.VideoQuality = createPref( "Force Video Quality", "Should streams be filtered based on quality?", Constants().NO_PREFERENCE, firstValid( RegRead( "VideoQuality", "Settings" ), Constants().NO_PREFERENCE ), "enum", Constants().eVID_QUALITY )
+    prefs.RedditEnabled = createPref( "Enable Reddit", "Does the reddit icon appear on the home screen?", Constants().ENABLED_VALUE, firstValid( RegRead("enabled", "reddit"), Constants().ENABLED_VALUE ), "enum", Constants().eENABLED_DISABLED )
+    return prefs
+End Function
+
 Sub youtube_browse_settings()
     screen = uitkPreShowPosterMenu("","Settings")
     settingmenu = [
@@ -29,7 +36,7 @@ Sub youtube_browse_settings()
     ]
     onselect = [0, m, "AddAccount", "ClearHistory", "RedditSettings", "About"]
 
-    uitkDoPosterMenu(settingmenu, screen, onselect)
+    uitkDoPosterMenu( settingmenu, screen, onselect )
 End Sub
 
 Sub youtube_add_account()
@@ -123,4 +130,46 @@ Function GetFeedXML(plurl As String) As Dynamic
             return invalid
         end if
         return plxml
+End Function
+
+Function createPref( prefName as String, prefDesc as String, prefDefault as Dynamic, prefValue as Dynamic, prefType as String, enumType = invalid as Dynamic ) as Object
+    base = {}
+    base.name = prefName
+    base.value = prefValue
+    base.default = prefDefault
+    base.type = prefType
+    base.desc = prefDesc
+    base.values = getEnumValuesForType( prefType, enumType )
+    return base
+End Function
+
+Function getEnumValuesForType( prefType as String, enumType = invalid as Dynamic) as Object
+    retVal = invalid
+    if ( prefType = "bool" ) then
+        retVal = [ "false", "true" ]
+    else if ( prefType = "enum" ) then
+        if ( enumType = invalid ) then
+            print "Enum type required for getEnumValuesForType with prefType of enum"
+        else if ( enumType = Constants().eVID_QUALITY ) then
+            retVal = [ "No Preference", "Force Highest", "Force Lowest" ]
+        else if ( enumType = Constants().eENABLED_DISABLED ) then
+            retVal = [ "Enabled", "Disabled" ]
+        end if
+    end if
+    return retVal
+End Function
+
+Function Constants() as Object
+    consts = {}
+    consts.NO_PREFERENCE = 0
+    consts.FORCE_HIGHEST = 1
+    consts.FORCE_LOWEST = 2
+    consts.FALSE_VALUE = 0
+    consts.TRUE_VALUE = 1
+    consts.ENABLED_VALUE = 0
+    consts.DISABLED_VALUE = 1
+    
+    consts.eVID_QUALITY = "vidQuality"
+    consts.eENABLED_DISABLED = "enabledDisabled"
+    return consts
 End Function

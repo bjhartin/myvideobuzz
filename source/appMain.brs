@@ -58,7 +58,6 @@ Sub ShowHomeScreen()
         end function]
     MulticastInit(youtube)
     uitkDoPosterMenu(menudata, screen, onselect)
-
     sleep(25)
 End Sub 
 
@@ -83,6 +82,14 @@ Sub initTheme()
     theme.BackgroundColor = "#232B30"
 
     textColor = "#B7DFF8"
+    theme.ListScreenTitleColor      = "#92b2c6"
+    theme.ListScreenDescriptionText = "#92b2c6"
+    theme.GridScreenListNameColor   = "#FFFFFF"
+    theme.GridScreenMessageColor   = "#FFFFFF"
+    theme.GridScreenRetrievingColor   = "#FFFFFF"
+    theme.TextScreenBodyBackgroundColor   = "#FFFFFF"
+    ' theme.DialogBodyText   = "#FFFFFF"
+    ' theme.DialogTitleText   = "#FFFFFF"
     theme.ListItemText              = textColor
     theme.ListItemHighlightText     = textColor
     theme.PosterScreenLine1Text     = textColor

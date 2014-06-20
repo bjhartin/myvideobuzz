@@ -453,8 +453,26 @@ Function GetRedditMetaData(videoList As Object) as Object
 
     return metadata
 End Function
-
 Sub EditRedditSettings()
+    settingmenu = [
+        {
+            Title: "Manage Subreddits",
+            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            callback: "ManageSubreddits"
+        },
+        {
+            Title: "Show on Home Screen",
+            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            prefData: m.prefs.RedditEnabled
+        }
+    ]
+
+    uitkPreShowListMenu( m, settingmenu, "Reddit Preferences", "Preferences", "Reddit" )
+End Sub
+
+Sub ManageSubreddits_impl()
     port = CreateObject("roMessagePort")
     screen = CreateObject("roSearchScreen")
     screen.SetMessagePort(port)
