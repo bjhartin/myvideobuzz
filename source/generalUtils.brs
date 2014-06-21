@@ -2,7 +2,7 @@
 '******************************************************
 'Registry Helper Functions
 '******************************************************
-Function RegRead(key, section=invalid)
+Function RegRead(key as String, section = invalid as Dynamic) as Dynamic
     if (section = invalid) then
         section = "Default"
     end if
@@ -13,23 +13,23 @@ Function RegRead(key, section=invalid)
     return invalid
 End Function
 
-Function RegWrite(key, val, section=invalid)
+Sub RegWrite(key as String, val as String, section = invalid as Dynamic)
     if (section = invalid) then
         section = "Default"
     end if
     sec = CreateObject("roRegistrySection", section)
     sec.Write(key, val)
     sec.Flush() 'commit it
-End Function
+End Sub
 
-Function RegDelete(key, section=invalid)
+Sub RegDelete(key as String, section = invalid as Dynamic)
     if (section = invalid) then
         section = "Default"
     end if
     sec = CreateObject("roRegistrySection", section)
     sec.Delete(key)
     sec.Flush()
-End Function
+End Sub
 
 ' registry tools
 Function RegistryDump() as integer
@@ -84,7 +84,7 @@ Function internalQSort(A as Object, left as integer, right as integer) as void
 End Function
 
 ' quicksort an array using a function to extract the compare value
-Function internalKeyQSort(A as Object, key as object, left as integer, right as integer) as void
+Sub internalKeyQSort(A as Object, key as object, left as integer, right as integer)
     i = left
     j = right
     pivot = key(A[(left+right)/2])
@@ -109,10 +109,10 @@ Function internalKeyQSort(A as Object, key as object, left as integer, right as 
     if (i < right) then
         internalKeyQSort(A, key, i, right)
     end if
-End Function
+End Sub
 
 ' quicksort an array using an indentically sized array that holds the comparison values
-Function internalKeyArrayQSort(A as Object, keys as object, left as integer, right as integer) as void
+Sub internalKeyArrayQSort(A as Object, keys as object, left as integer, right as integer)
     i = left
     j = right
     pivot = keys[A[(left+right)/2]]
@@ -137,7 +137,7 @@ Function internalKeyArrayQSort(A as Object, keys as object, left as integer, rig
     if (i < right) then
         internalKeyArrayQSort(A, keys, i, right)
     end if
-End function
+End Sub
 
 '******************************************************
 ' QuickSort(Array, optional keys function or array)

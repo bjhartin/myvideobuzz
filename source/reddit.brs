@@ -221,15 +221,11 @@ End Function
 Function RedditCategoryList() As Object
     categoryList  = CreateObject("roList")
     subreddits = RegRead("subreddits", "reddit")
-    if (RegRead("enabled", "reddit") = invalid) then
-        if (subreddits <> invalid) then
-            regex = CreateObject("roRegex", "\+", "") ' split on plus
-            subredditArray = regex.Split(subreddits)
-        else
-            subredditArray = ["videos"]
-        end if
+    if (subreddits <> invalid) then
+        regex = CreateObject("roRegex", "\+", "") ' split on plus
+        subredditArray = regex.Split(subreddits)
     else
-        subredditArray = []
+        subredditArray = ["videos"]
     end if
     for each record in subredditArray
         category        = CreateObject("roAssociativeArray")
@@ -251,7 +247,7 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
-    yt = LoadYouTube()
+    yt = getYoutube()
     ytMatches = yt.ytIDRegex.Match( decodedUrl )
     url = jsonObject.data.url
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
@@ -319,7 +315,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
     video               = CreateObject("roAssociativeArray")
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
-    yt = LoadYouTube()
+    yt = getYoutube()
     gfycatMatches = yt.gfycatIDRegex.Match( decodedUrl )
     id = invalid
     if ( gfycatMatches.Count() > 1 ) then
@@ -465,7 +461,7 @@ Sub EditRedditSettings()
             Title: "Show on Home Screen",
             HDPosterUrl:"pkg:/images/reddit_beta.jpg",
             SDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            prefData: m.prefs.RedditEnabled
+            prefData: getPrefs().getPrefData( getConstants().pREDDIT_ENABLED )
         }
     ]
 
@@ -479,15 +475,11 @@ Sub ManageSubreddits_impl()
 
     history = CreateObject("roSearchHistory")
     subreddits = RegRead("subreddits", "reddit")
-    if (RegRead("enabled", "reddit") = invalid) then
-        if (subreddits <> invalid) then
-            regex = CreateObject("roRegex", "\+", "") ' split on plus
-            subredditArray = regex.Split(subreddits)
-        else
-            subredditArray = ["videos"]
-        end if
+    if (subreddits <> invalid) then
+        regex = CreateObject("roRegex", "\+", "") ' split on plus
+        subredditArray = regex.Split(subreddits)
     else
-        subredditArray = []
+        subredditArray = ["videos"]
     end if
     screen.SetSearchTerms(subredditArray)
     screen.SetBreadcrumbText("", "Hit the * button to remove a subreddit")
@@ -515,7 +507,6 @@ Sub ManageSubreddits_impl()
                         subredditArray.Push( newOne )
 
                         screen.SetSearchTerms( subredditArray )
-                        RegDelete("enabled", "reddit")
                     end if
                     ' When the user hits 'Add Subreddit' or hits ok on a subreddit on the right side, set the search text
                     ' to make it easier to edit mistakes
@@ -524,7 +515,6 @@ Sub ManageSubreddits_impl()
             else if (msg.isCleared()) then
                 subredditArray.Clear()
                 screen.ClearSearchTerms()
-                RegWrite( "enabled", "false", "reddit" )
             else if ( msg.isButtonInfo() ) then
                 ' Bug: This event is fired when focus is on the buttons on the bottom of the search screen with an index of 0
                 msgIndex% = msg.GetIndex()

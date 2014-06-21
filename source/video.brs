@@ -1,8 +1,5 @@
 
-Function LoadYouTube() As Object
-    ' global singleton
-    return m.youtube
-End Function
+
 
 Function InitYouTube() As Object
     ' constructor
@@ -22,9 +19,6 @@ Function InitYouTube() As Object
     if (tmpDate <> invalid) then
         this.searchDateFilter = tmpDate
     end if
-
-    ' Preferences object
-    this.prefs = preferences()
 
     this.searchSort = ""
     tmpSort = RegRead("sort", "Search")
@@ -71,6 +65,7 @@ Function InitYouTube() As Object
     this.About = youtube_about
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
+    this.GeneralSettings = EditGeneralSettings
     this.ManageSubreddits = ManageSubreddits_impl
     this.ClearHistory = ClearHistory_impl
 
@@ -551,7 +546,7 @@ End Function
 Function get_linked( xml as Object ) as Dynamic
     desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
     if (desc.Count() > 0) then
-        return MatchAll( LoadYouTube().ytIDRegex, desc[0].GetText() )
+        return MatchAll( getYoutube().ytIDRegex, desc[0].GetText() )
     end if
     return []
 End Function
@@ -630,7 +625,7 @@ End Function
 '*******************************************
 Function get_human_readable_as_length(length As Dynamic) As Integer
     len% = 0
-    yt = LoadYouTube()
+    yt = getYoutube()
     hourMatches = yt.regexTimestampHours.Match( length )
     if ( hourMatches.Count() = 2 ) then
         len% = len% + (3600 * strtoi( hourMatches[1] ))
@@ -840,7 +835,7 @@ Function DisplayVideo(content As Object)
     video.setMessagePort(p)
     video.SetPositionNotificationPeriod(5)
 
-    yt = LoadYouTube()
+    yt = getYoutube()
     ' Need to add the SSL cert to the video screen if in https
     if ( content["SSL"] = true ) then
         video.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
@@ -953,6 +948,9 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     end if
 
     urlEncodedFmtStreamMap = urlEncodedRegex.Match( htmlString )
+    constants = getConstants()
+    prefs = getPrefs()
+    videoQualityPref = prefs.getPrefValue( constants.pVIDEO_QUALITY )
 
     if (urlEncodedFmtStreamMap.Count() > 1) then
         if (not(strTrim(urlEncodedFmtStreamMap[1]) = "")) then
@@ -960,7 +958,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
             hasHD = false
             fullHD = false
             topQuality% = -1
-            if ( m.prefs.VideoQuality.value = Constants().FORCE_LOWEST ) then
+            if ( videoQualityPref = constants.FORCE_LOWEST ) then
                 topQuality% = 10000
             end if
             streamData = invalid
@@ -986,9 +984,9 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                     itag% = strtoi( pair.itag )
                     if ( itag% <> invalid AND ( itag% = 18 OR itag% = 22 OR itag% = 37 ) ) then
                         'printAA( pair )
-                        'print "urlDecoded: " ; urlDecoded
+                        print "itag: " ; pair.itag ; " pref: " ; tostr( videoQualityPref )
                         ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
-                        if ( m.prefs.VideoQuality.value <> Constants().NO_PREFERENCE ) then
+                        if ( videoQualityPref = constants.NO_PREFERENCE ) then
                             print "Not filtering streams"
                             if ( itag% = 18 ) then
                                 ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
@@ -1003,7 +1001,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                                 hasHD = true
                                 fullHD = true
                             end if
-                        else if ( ( m.prefs.VideoQuality.value = Constants().FORCE_HIGHEST AND itag% > topQuality% ) OR ( m.prefs.VideoQuality.value = Constants().FORCE_LOWEST AND itag% < topQuality% ) ) then
+                        else if ( ( videoQualityPref = constants.FORCE_HIGHEST AND itag% > topQuality% ) OR ( videoQualityPref = constants.FORCE_LOWEST AND itag% < topQuality% ) ) then
                             print "Found stream with itag: " ; pair.itag
                             if ( itag% = 18 ) then
                                 ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
@@ -1023,7 +1021,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                             end if
                         end if
                     else
-                        print "Tried to parse invalid itag value."
+                        print "Tried to parse invalid itag value: " ; tostr ( itag% )
                     end if
                 end if
             end for

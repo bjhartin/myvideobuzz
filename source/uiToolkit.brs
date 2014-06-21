@@ -123,6 +123,7 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
     'screen.SetListStyle("flat-category")
     'screen.SetListDisplayMode("best-fit")
     'screen.SetListDisplayMode("zoom-to-fill")
+    prefs = getPrefs()
     screen.Show()
     screen.SetContent( content )
     while (true)
@@ -133,19 +134,26 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
             'print "event.GetType()=";msg.GetType(); " event.GetMessage()= "; msg.GetMessage()
             if ( msg.isListItemSelected() ) then
                 index% = msg.GetIndex()
+                prefData = content[ index% ].prefData
                 if ( content[ index% ].callback <> invalid ) then
                     context[ content[ index% ].callback ]()
-                else if ( content[ index% ].prefData <> invalid ) then
+                else if ( prefData <> invalid ) then
                     newBreadA = breadB
                     if ( newBreadA = invalid ) then
                         newBreadA = headerText
                     end if
                     ' Handle enum preference
-                    result = uitkEnumOptionScreen( content[ index% ].prefData, newBreadA, content[ index% ].prefData.name )
-                    if ( content[ index% ].prefData.value <> result ) then
-                        print "Preference value changed, was: " ; tostr( content[ index% ].prefData.value ); " is now: " ; tostr( result )
+                    newData = {}
+                    newData.Append( content[ index% ] )
+                    newData.Append( prefData )
+                    newData.Delete( "prefData" )
+                    printAA( newData )
+                    result = uitkEnumOptionScreen( newData, newBreadA, prefData.name )
+                    if ( prefData.value <> result ) then
+                        print "Preference value changed, was: " ; tostr( prefData.value ); " is now: " ; tostr( result )
+                        prefs.setPrefValue( prefData.key, result )
                     end if
-                    content[ index% ].prefData.value = result
+                    prefData.value = result
                 end if
             else if (msg.isScreenClosed()) then
                 exit while
@@ -189,7 +197,9 @@ Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = in
 
     for each option in prefData.values
         metadata = {
-            title: option
+            title: option,
+            HDPosterUrl: prefData.HDPosterUrl,
+            SDPosterUrl: prefData.SDPosterUrl
         }
         screen.AddContent( metadata )
     next

@@ -1,10 +1,30 @@
 
 Sub Init()
-    'if m.oa = invalid then m.oa = InitOauth("RokyouTube", "toasterdesigns.net", "Y6GQqc19mQ2Q5Ux4PFxMOUPk", "1.0")
     if (m.youtube = invalid) then
         m.youtube = InitYouTube()
     end if
+
+    if ( m.constants = invalid ) then
+        m.constants = LoadConstants()
+    end if
+
+    if ( m.prefs = invalid ) then
+        m.prefs = LoadPreferences()
+    end if
 End Sub
+
+Function getYoutube() As Object
+    ' global singleton
+    return m.youtube
+End Function
+
+Function getConstants() as Object
+    return m.constants
+End Function
+
+Function getPrefs() as Object
+    return m.prefs
+End Function
 
 Sub RunUserInterface()
     'initialize theme attributes like titles, logos and overhang color
@@ -24,7 +44,9 @@ Sub ShowHomeScreen()
 
     Init()
 
-    youtube = LoadYouTube()
+    youtube = getYoutube()
+    consts = getConstants()
+    prefs = getPrefs()
 
     menudata=[]
      if (ytusername<>invalid) and (isnonemptystr(ytusername)) then
@@ -36,8 +58,8 @@ Sub ShowHomeScreen()
     menudata.Push({ShortDescriptionLine1:"History", OnClick:"ShowHistory", ShortDescriptionLine2:"View your history",  HDPosterUrl:"pkg:/images/History.png", SDPosterUrl:"pkg:/images/History.png"})
     menudata.Push({ShortDescriptionLine1:"Search", OnClick:"SearchYoutube", ShortDescriptionLine2:"Search YouTube for videos",  HDPosterUrl:"pkg:/images/Search.jpg", SDPosterUrl:"pkg:/images/Search.jpg"})
     menudata.Push({ShortDescriptionLine1:"Local Network", Custom: true, ViewFunc: CheckForLANVideos, categoryData:invalid, ShortDescriptionLine2:"View recent LAN videos", HDPosterUrl:"pkg:/images/LAN.jpg", SDPosterUrl:"pkg:/images/LAN.jpg"})
-    if (RegRead("enabled", "reddit") = invalid) then
-        menudata.Push({ShortDescriptionLine1:"Reddit", ShortDescriptionLine2: "Browse YouTube videos from reddit", Custom: true, ViewFunc: ViewReddits, HDPosterUrl:"pkg:/images/reddit_beta.jpg", SDPosterUrl:"pkg:/images/reddit_beta.jpg"})
+    if ( prefs.getPrefValue( consts.pREDDIT_ENABLED ) = consts.ENABLED_VALUE ) then
+        menudata.Push({ShortDescriptionLine1:"Reddit", ShortDescriptionLine2: "Browse videos from reddit", Custom: true, ViewFunc: ViewReddits, HDPosterUrl:"pkg:/images/reddit_beta.jpg", SDPosterUrl:"pkg:/images/reddit_beta.jpg"})
     end if
     menudata.Push({ShortDescriptionLine1:"Top Channels", FeedURL:"pkg:/xml/topchannels.xml", categoryData:{ isPlaylist: false },  ShortDescriptionLine2:"Top Channels", HDPosterUrl:"pkg:/images/TopChannels.jpg", SDPosterUrl:"pkg:/images/TopChannels.jpg"})
     menudata.Push({ShortDescriptionLine1:"Most Popular", FeedURL:"pkg:/xml/mostpopular.xml", categoryData:{ isPlaylist: false },  ShortDescriptionLine2:"Most Popular Videos", HDPosterUrl:"pkg:/images/MostPopular.jpg", SDPosterUrl:"pkg:/images/mostpopular.jpg"})
@@ -59,7 +81,7 @@ Sub ShowHomeScreen()
     MulticastInit(youtube)
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
-End Sub 
+End Sub
 
 '*************************************************************
 '** Set the configurable theme attributes for the application
@@ -84,6 +106,7 @@ Sub initTheme()
     textColor = "#B7DFF8"
     theme.ListScreenTitleColor      = "#92b2c6"
     theme.ListScreenDescriptionText = "#92b2c6"
+    theme.ListScreenHeaderText      = "#92b2c6"
     theme.GridScreenListNameColor   = "#FFFFFF"
     theme.GridScreenMessageColor   = "#FFFFFF"
     theme.GridScreenRetrievingColor   = "#FFFFFF"

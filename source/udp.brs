@@ -51,7 +51,7 @@ End Sub
 ' Listens for active video queries, and responds if necessary
 '********************************************************************
 Sub CheckForMCast()
-    youtube = LoadYouTube()
+    youtube = getYoutube()
     if (youtube.mp_socket = invalid OR youtube.udp_socket = invalid) then
         print("CheckForMCast: Invalid Message Port or UDP Socket")
         return

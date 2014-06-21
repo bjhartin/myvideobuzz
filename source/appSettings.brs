@@ -1,9 +1,75 @@
-
-Function preferences() as Object
+Function LoadPreferences() as Object
     prefs = {}
-    prefs.VideoQuality = createPref( "Force Video Quality", "Should streams be filtered based on quality?", Constants().NO_PREFERENCE, firstValid( RegRead( "VideoQuality", "Settings" ), Constants().NO_PREFERENCE ), "enum", Constants().eVID_QUALITY )
-    prefs.RedditEnabled = createPref( "Enable Reddit", "Does the reddit icon appear on the home screen?", Constants().ENABLED_VALUE, firstValid( RegRead("enabled", "reddit"), Constants().ENABLED_VALUE ), "enum", Constants().eENABLED_DISABLED )
+    consts = getConstants()
+    prefs.VideoQuality = createPref( { prefName: "Force Video Quality",
+        prefDesc: "Should streams be filtered based on quality?",
+        prefDefault: consts.NO_PREFERENCE,
+        prefKey: consts.pVIDEO_QUALITY,
+        prefType: "enum",
+        enumType: consts.eVID_QUALITY
+    })
+    prefs.RedditEnabled = createPref( { prefName: "Enable Reddit",
+        prefDesc: "Does the reddit icon appear on the home screen?",
+        prefDefault: consts.ENABLED_VALUE,
+        prefKey: consts.pREDDIT_ENABLED,
+        prefType: "enum",
+        enumType: consts.eENABLED_DISABLED
+        })
+
+    prefs.getPrefData  = getPrefData_impl
+    prefs.getPrefValue = getPrefValue_impl
+    prefs.setPrefValue = setPrefValue_impl
     return prefs
+End Function
+
+Function getPrefValue_impl( key as String ) as Dynamic
+    retVal = invalid
+    if ( m[key] <> invalid ) then
+        retVal = m[key].value
+    end if
+    return retVal
+End Function
+
+Sub setPrefValue_impl( key as String, value as Dynamic )
+    retVal = invalid
+    if ( m[key] <> invalid ) then
+        RegWrite( key, tostr( value ), "Preferences" )
+    else
+        RegDelete( key, "Preferences" )
+    end if
+End Sub
+
+Function getPrefData_impl( key as String ) as Dynamic
+    retVal = invalid
+    if ( m[key] <> invalid ) then
+        retVal = m[key]
+    end if
+    return retVal
+End Function
+
+'**************************************************
+' @param prefData associative array with the following items:
+'       prefName as String
+'       prefDesc as String
+'       prefDefault as Dynamic
+'       preyKey  as String
+'       prefType as String
+'       enumType (Optional) as Dynamic
+'**************************************************
+Function createPref( prefData as Object ) as Object
+    base = {}
+    base.name       = prefData.prefName
+    base.key        = prefData.prefKey
+    base.value      = strtoi( firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) ) )
+    base.default    = prefData.prefDefault
+    base.type       = prefData.prefType
+    base.desc       = prefData.prefDesc
+    base.values     = getEnumValuesForType( prefData.prefType, prefData.enumType )
+    return base
+End Function
+
+Function loadPrefValue( key as String ) as Dynamic
+    return RegRead( key, "Preferences" )
 End Function
 
 Sub youtube_browse_settings()
@@ -22,6 +88,12 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/ClearHistory.png"
         },
         {
+            ShortDescriptionLine1:"General",
+            ShortDescriptionLine2:"General Settings",
+            HDPosterUrl:"pkg:/images/Settings.jpg",
+            SDPosterUrl:"pkg:/images/Settings.jpg"
+        },
+        {
             ShortDescriptionLine1:"Reddit",
             ShortDescriptionLine2:"Settings for the reddit channel.",
             HDPosterUrl:"pkg:/images/reddit_beta.jpg",
@@ -34,9 +106,22 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/About.jpg"
         }
     ]
-    onselect = [0, m, "AddAccount", "ClearHistory", "RedditSettings", "About"]
+    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "RedditSettings", "About"]
 
     uitkDoPosterMenu( settingmenu, screen, onselect )
+End Sub
+
+Sub EditGeneralSettings()
+    settingmenu = [
+        {
+            Title: "Video Quality",
+            HDPosterUrl:"pkg:/images/Settings.jpg",
+            SDPosterUrl:"pkg:/images/Settings.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pVIDEO_QUALITY )
+        }
+    ]
+
+    uitkPreShowListMenu( m, settingmenu, "General Preferences", "Preferences", "General" )
 End Sub
 
 Sub youtube_add_account()
@@ -132,17 +217,6 @@ Function GetFeedXML(plurl As String) As Dynamic
         return plxml
 End Function
 
-Function createPref( prefName as String, prefDesc as String, prefDefault as Dynamic, prefValue as Dynamic, prefType as String, enumType = invalid as Dynamic ) as Object
-    base = {}
-    base.name = prefName
-    base.value = prefValue
-    base.default = prefDefault
-    base.type = prefType
-    base.desc = prefDesc
-    base.values = getEnumValuesForType( prefType, enumType )
-    return base
-End Function
-
 Function getEnumValuesForType( prefType as String, enumType = invalid as Dynamic) as Object
     retVal = invalid
     if ( prefType = "bool" ) then
@@ -150,26 +224,35 @@ Function getEnumValuesForType( prefType as String, enumType = invalid as Dynamic
     else if ( prefType = "enum" ) then
         if ( enumType = invalid ) then
             print "Enum type required for getEnumValuesForType with prefType of enum"
-        else if ( enumType = Constants().eVID_QUALITY ) then
+        else if ( enumType = getConstants().eVID_QUALITY ) then
             retVal = [ "No Preference", "Force Highest", "Force Lowest" ]
-        else if ( enumType = Constants().eENABLED_DISABLED ) then
+        else if ( enumType = getConstants().eENABLED_DISABLED ) then
             retVal = [ "Enabled", "Disabled" ]
+        else
+            print "enum must have the enumType defined!"
         end if
     end if
     return retVal
 End Function
 
-Function Constants() as Object
-    consts = {}
-    consts.NO_PREFERENCE = 0
-    consts.FORCE_HIGHEST = 1
-    consts.FORCE_LOWEST = 2
-    consts.FALSE_VALUE = 0
-    consts.TRUE_VALUE = 1
-    consts.ENABLED_VALUE = 0
-    consts.DISABLED_VALUE = 1
-    
-    consts.eVID_QUALITY = "vidQuality"
-    consts.eENABLED_DISABLED = "enabledDisabled"
-    return consts
+
+
+Function LoadConstants() as Object
+    this = {}
+    this.NO_PREFERENCE     = 0
+    this.FORCE_HIGHEST     = 1
+    this.FORCE_LOWEST      = 2
+    this.FALSE_VALUE       = 0
+    this.TRUE_VALUE        = 1
+    this.ENABLED_VALUE     = 0
+    this.DISABLED_VALUE    = 1
+    ' Enumeration type constants
+    this.eVID_QUALITY      = "vidQuality"
+    this.eENABLED_DISABLED = "enabledDisabled"
+
+    ' Property Keys
+    this.pREDDIT_ENABLED    = "RedditEnabled"
+    this.pVIDEO_QUALITY     = "VideoQuality"
+
+    return this
 End Function
