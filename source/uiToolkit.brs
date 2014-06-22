@@ -131,7 +131,6 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
 
         'print "uitkDoPosterMenu | msg type = ";type(msg)
         if (type(msg) = "roListScreenEvent") then
-            'print "event.GetType()=";msg.GetType(); " event.GetMessage()= "; msg.GetMessage()
             if ( msg.isListItemSelected() ) then
                 index% = msg.GetIndex()
                 prefData = content[ index% ].prefData
@@ -147,7 +146,6 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
                     newData.Append( content[ index% ] )
                     newData.Append( prefData )
                     newData.Delete( "prefData" )
-                    printAA( newData )
                     result = uitkEnumOptionScreen( newData, newBreadA, prefData.name )
                     if ( prefData.value <> result ) then
                         print "Preference value changed, was: " ; tostr( prefData.value ); " is now: " ; tostr( result )
@@ -159,16 +157,6 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
                 exit while
             else if (msg.isListItemFocused()) then
                 idx% = msg.GetIndex()
-            'else if (msg.isRemoteKeyPressed()) then
-            '    ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
-            '    if (onplay_func <> invalid ) then
-            '        if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_PLAY_PRESSED ) then
-            '            onplay_func( posterdata[idx%] )
-            '        else if ( msg.GetIndex() = bslUniversalControlEventCodes().BUTTON_INFO_PRESSED ) then
-            '            while ( VListOptionDialog( false, posterdata[idx%] ) = 1 )
-            '            end while
-            '        end if
-            '    end if
             end if
         else if ( msg = invalid ) then
             CheckForMCast()
@@ -209,9 +197,7 @@ Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = in
     while (true)
         msg = wait(2000, screen.GetMessagePort())
 
-        'print "uitkDoPosterMenu | msg type = ";type(msg)
         if (type(msg) = "roListScreenEvent") then
-            'print "event.GetType()=";msg.GetType(); " event.GetMessage()= "; msg.GetMessage()
             if ( msg.isListItemSelected() ) then
                 returnIndex% = msg.GetIndex()
                 exit while

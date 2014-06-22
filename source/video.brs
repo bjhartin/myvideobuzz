@@ -984,10 +984,8 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                     itag% = strtoi( pair.itag )
                     if ( itag% <> invalid AND ( itag% = 18 OR itag% = 22 OR itag% = 37 ) ) then
                         'printAA( pair )
-                        print "itag: " ; pair.itag ; " pref: " ; tostr( videoQualityPref )
                         ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
                         if ( videoQualityPref = constants.NO_PREFERENCE ) then
-                            print "Not filtering streams"
                             if ( itag% = 18 ) then
                                 ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
                                 video["Streams"].Push( {url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag} )
@@ -1002,7 +1000,6 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                                 fullHD = true
                             end if
                         else if ( ( videoQualityPref = constants.FORCE_HIGHEST AND itag% > topQuality% ) OR ( videoQualityPref = constants.FORCE_LOWEST AND itag% < topQuality% ) ) then
-                            print "Found stream with itag: " ; pair.itag
                             if ( itag% = 18 ) then
                                 ' 18 is MP4 270p/360p H.264 at .5 Mbps video bitrate
                                 streamData = {url: urlDecoded, bitrate: 512, quality: false, contentid: pair.itag}

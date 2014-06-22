@@ -111,8 +111,6 @@ Sub initTheme()
     theme.GridScreenMessageColor   = "#FFFFFF"
     theme.GridScreenRetrievingColor   = "#FFFFFF"
     theme.TextScreenBodyBackgroundColor   = "#FFFFFF"
-    ' theme.DialogBodyText   = "#FFFFFF"
-    ' theme.DialogTitleText   = "#FFFFFF"
     theme.ListItemText              = textColor
     theme.ListItemHighlightText     = textColor
     theme.PosterScreenLine1Text     = textColor

@@ -449,6 +449,7 @@ Function GetRedditMetaData(videoList As Object) as Object
 
     return metadata
 End Function
+
 Sub EditRedditSettings()
     settingmenu = [
         {
