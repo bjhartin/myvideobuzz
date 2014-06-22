@@ -79,6 +79,9 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                     ' Include a Back button, if there is more than one item left in the list
                     previous = linksList.Count() > 1
                     return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
+                else if ( video[set_idx]["isPlaylist"] = true ) then
+                    youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist...")
+                    return { isContentList: false, vidIdx: set_idx }
                 else
                     vidIdx% = youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
                     return { isContentList: false, content: video, vidIdx: vidIdx% }
@@ -206,7 +209,7 @@ Function NewRedditVideoList(jsonObject As Object) As Object
             video = NewRedditURLVideo( record, "Vine" )
             supported = true
         end if
-        if ( supported = true AND video["ID"] <> invalid AND video["ID"] <> "" ) then
+        if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
             videoList.Push( video )
         end if
     next
@@ -255,8 +258,9 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     end if
     video["URL"] = url
 
-    id = url
+    id = invalid
 
+    ' Check for a video ID
     if ( ytMatches.Count() > 1 ) then
         ' Default the PlayStart, since it is read later on
         video["PlayStart"] = 0
@@ -279,6 +283,15 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
             end if
         end if
         id = ytMatches[1]
+    else
+        ' Now check for a playlist link
+        ytUrl = NewHttp( decodedUrl )
+        playlistId = ytUrl.GetParams( "urlParams" ).get( "list" )
+        if ( playlistId <> invalid ) then
+            video["isPlaylist"] = true
+            id = playlistId
+            video["URL"] = "http://gdata.youtube.com/feeds/api/playlists/" + id
+        end if
     end if
     video["Source"]        = source
     video["ID"]            = id
@@ -425,11 +438,15 @@ Function GetRedditMetaData(videoList As Object) as Object
     metadata = []
 
     for each video in videoList
-        meta                           = CreateObject("roAssociativeArray")
+        meta                           = {}
         meta["ContentType"]            = "movie"
         meta["ID"]                     = video["ID"]
         meta["TitleSeason"]            = video["Title"]
-        meta["Title"]                  = "[" + video["Source"] + "] Score: " + tostr(video["Score"])
+        if ( video["isPlaylist"] = true ) then
+            meta["Title"]                  = "[" + video["Source"] + " Playlist] Score: " + tostr( video["Score"] )
+        else
+            meta["Title"]                  = "[" + video["Source"] + "] Score: " + tostr( video["Score"] )
+        end if
         meta["Actors"]                 = meta["Title"]
         meta["FullDescription"]        = video["Description"]
         meta["Description"]            = Left( video["Description"], 300 )
@@ -444,6 +461,7 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["PlayStart"]              = video["PlayStart"]
         meta["Source"]                 = video["Source"]
         meta["URL"]                    = video["URL"]
+        meta["isPlaylist"]             = firstValid( video["isPlaylist"], false )
         metadata.Push(meta)
     end for
 

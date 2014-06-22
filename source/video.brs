@@ -51,7 +51,7 @@ Function InitYouTube() As Object
     this.DisplayVideoListFromMetadataList = DisplayVideoListFromMetadataList_impl
     this.FetchVideoList = FetchVideoList_impl
     this.VideoDetails = VideoDetails_impl
-    this.newVideoListFromXML = youtube_new_video_list
+    this.newVideoListFromXML = newVideoListFromXML_impl
     this.newVideoFromXML = youtube_new_video
     this.ReturnVideoList = ReturnVideoList_impl
 
@@ -78,7 +78,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "1"
+    this.HISTORY_VERSION = "2"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -356,7 +356,6 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                     if ( reverseSort ) then
                         additionalParams.push( { name: "orderby", value: "reversedPosition" } )
                     end if
-
                     return youtube.ReturnVideoList( categories[set_idx].link, youtube.CurrentPageTitle, invalid, additionalParams )
                 else
                     return []
@@ -480,8 +479,8 @@ End Function
 ' @param xmlList the XML to create the list of videos from
 ' @return an roList of video metadata objects
 '********************************************************************
-Function youtube_new_video_list(xmlList As Object) As Object
-    'print "youtube_new_video_list init"
+Function newVideoListFromXML_impl(xmlList As Object) As Object
+    'print "newVideoListFromXML_impl init"
     videolist = CreateObject("roList")
     for each record in xmlList
         video = m.newVideoFromXML(record)
@@ -721,7 +720,8 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                 else if (msg.GetIndex() = 1) then ' Play All
                     for i = idx to vidCount - 1  Step +1
                         selectedVideo = videos[i]
-                        if ( selectedVideo["action"] = invalid )
+                        isPlaylist = firstValid( selectedVideo["isPlaylist"], false )
+                        if ( isPlaylist = false AND selectedVideo["action"] = invalid )
                             result = video_get_qualities(selectedVideo)
                             if (result = 0) then
                                 ret = DisplayVideo(selectedVideo)
@@ -750,6 +750,8 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                     end if
                 else if (msg.GetIndex() = 6) then ' Linked videos
                     m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
+                else if (msg.GetIndex() = 7) then ' View playlist
+                    m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...")
                 end if
             else if ( msg.isRemoteKeyPressed() ) then
                 if ( msg.GetIndex() = 4 AND vidCount > 1 ) then  ' left arrow
@@ -802,26 +804,32 @@ End Function
 '********************************************************************
 Function BuildButtons_impl() as Object
     m.screen.ClearButtons()
-    buttons = CreateObject("roAssociativeArray")
+    buttons = {}
     resumeEnabled = false
-    if (m.video["Live"] = false AND m.video["PlayStart"] > 0) then
-        resumeEnabled = true
-        buttons["resume"]         = m.screen.AddButton(0, "Resume")
-        buttons["restart"]        = m.screen.AddButton(5, "Play from beginning")
+    isPlaylist = firstValid( m.video[ "isPlaylist" ], false )
+    videoAuthor = m.video[ "Author" ]
+    if ( isPlaylist = false ) then
+        if ( m.video[ "Live" ] = false AND m.video[ "PlayStart" ] > 0 ) then
+            resumeEnabled = true
+            buttons[ "resume"]         = m.screen.AddButton( 0, "Resume" )
+            buttons[ "restart"]        = m.screen.AddButton( 5, "Play from beginning" )
+        else
+            buttons[ "play"]           = m.screen.AddButton( 0, "Play")
+        end if
+        buttons[ "play_all"]           = m.screen.AddButton( 1, "Play All")
     else
-        buttons["play"]           = m.screen.AddButton(0, "Play")
+        buttons[ "view_playlist"]      = m.screen.AddButton( 7, "View Playlist" )
     end if
-    buttons["play_all"]     = m.screen.AddButton(1, "Play All")
-    if (m.video["Author"] <> invalid) then
+    if ( videoAuthor <> invalid) then
         ' Hide related videos if the Resume/Play from beginning options are enabled
         if (not(resumeEnabled)) then
-            buttons["show_related"] = m.screen.AddButton(2, "Show Related Videos")
+            buttons[ "show_related" ] = m.screen.AddButton( 2, "Show Related Videos" )
         end if
-        buttons["more"]         = m.screen.AddButton(3, "More Videos By " + m.video["Author"])
-        buttons["playlists"]    = m.screen.AddButton(4, "Show "+ m.video["Author"] + "'s playlists")
+        buttons[ "more" ]         = m.screen.AddButton( 3, "More Videos By " + videoAuthor )
+        buttons[ "playlists" ]    = m.screen.AddButton( 4, "Show "+ videoAuthor + "'s playlists" )
     end if
-    if (m.video["Linked"] <> invalid AND m.video["Linked"].Count() > 0) then
-        buttons["linked"]       = m.screen.AddButton(6, "Linked Videos")
+    if (m.video[ "Linked" ] <> invalid AND m.video[ "Linked" ].Count() > 0) then
+        buttons[ "linked" ]       = m.screen.AddButton( 6, "Linked Videos" )
     end if
     return buttons
 End Function

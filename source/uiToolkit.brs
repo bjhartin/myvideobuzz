@@ -466,26 +466,28 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 category_time.Mark()
 
                 contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
-                ' Handles when the Back/Forward arrows are clicked
-                if ( contentData.isContentList = true ) then
-                    contentlist = contentData.content
-                    if (contentlist.Count() <> 0) then
-                        if ( contentlist[0]["action"] <> invalid AND contentlist.Count() > 1 ) then
-                            screen.SetFocusedListItem(1)
-                        else
-                            screen.SetFocusedListItem(0)
+                if ( contentData <> invalid ) then
+                    ' Handles when the Back/Forward arrows are clicked
+                    if ( contentData.isContentList = true ) then
+                        contentlist = contentData.content
+                        if (contentlist.Count() <> 0) then
+                            if ( contentlist[0]["action"] <> invalid AND contentlist.Count() > 1 ) then
+                                screen.SetFocusedListItem(1)
+                            else
+                                screen.SetFocusedListItem(0)
+                            end if
+                            screen.SetContentList(contentlist)
+                            screen.Show()
+                            'screen.SetFocusedListItem(msg.GetIndex())
                         end if
-                        screen.SetContentList(contentlist)
-                        screen.Show()
-                        'screen.SetFocusedListItem(msg.GetIndex())
-                    end if
-                else
-                    if ( contentData.vidIdx <> invalid ) then
+                    else if ( contentData.vidIdx <> invalid ) then
                         ' If the user has changed the video selection, either via Play All
                         ' or via the left/right buttons, change the selected video to match what they
                         ' had selected on the details screen.
                         screen.SetFocusedListItem( contentData.vidIdx )
                     end if
+                else
+                    print "uitkDoCategoryMenu content function returned invalid content data!"
                 end if
             else if (msg.isListItemFocused()) then
                 ' This event occurs when the user changes the selection of a video item
@@ -494,7 +496,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 return -1
             else if (msg.isRemoteKeyPressed()) then
                 ' If the play button is pressed on the video list, and the onplay_func is valid, play the video
-                if (onplay_func <> invalid AND msg.GetIndex() = buttonCodes.BUTTON_PLAY_PRESSED) then
+                if (onplay_func <> invalid AND msg.GetIndex() = buttonCodes.BUTTON_PLAY_PRESSED AND contentlist[idx%]["isPlaylist"] <> true) then
                     ' Stops the annoyance when a video finishes playing and the banner gets re-selected.
                     screen.SetFocusToFilterBanner( false )
                     onplay_func(contentlist[idx%])
