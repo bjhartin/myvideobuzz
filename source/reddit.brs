@@ -470,15 +470,21 @@ Function GetRedditMetaData(videoList As Object) as Object
     metadata = []
 
     for each video in videoList
-        isPlaylist = firstValid( video["isPlaylist"], false )
+        isPlaylist                     = firstValid( video[ "isPlaylist" ], false )
+        hasPlaylist                    = firstValid( video[ "HasPlaylist" ], false )
+        source                         = video[ "Source" ]
         meta                           = {}
         meta["ContentType"]            = "movie"
         meta["ID"]                     = video["ID"]
         meta["TitleSeason"]            = video["Title"]
         if ( isPlaylist = true ) then
-            meta["Title"]                  = "[" + video["Source"] + " Playlist] Score: " + tostr( video["Score"] )
+            meta["Title"]              = "[" + source + " Playlist] Score: " + tostr( video["Score"] )
         else
-            meta["Title"]                  = "[" + video["Source"] + "] Score: " + tostr( video["Score"] )
+            if ( hasPlaylist ) then
+                ' Mark the title with a + to denote it has a playlist (make it easier to see from the video list)
+                source = source + "+"
+            end if
+            meta["Title"]              = "[" + source + "] Score: " + tostr( video["Score"] )
         end if
         meta["Actors"]                 = meta["Title"]
         meta["FullDescription"]        = video["Description"]
@@ -495,7 +501,7 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["Source"]                 = video["Source"]
         meta["URL"]                    = video["URL"]
         meta["isPlaylist"]             = isPlaylist
-        meta["HasPlaylist"]            = firstValid( video[ "HasPlaylist" ], false )
+        meta["HasPlaylist"]            = hasPlaylist
         meta["PlaylistID"]             = firstValid( video[ "PlaylistID" ], invalid )
         metadata.Push(meta)
     end for
