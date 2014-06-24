@@ -189,6 +189,7 @@ End Function
 '******************************************************************************
 Function NewRedditVideoList(jsonObject As Object) As Object
     videoList = CreateObject( "roList" )
+    constants = getConstants()
     for each record in jsonObject
         domain = LCase( record.data.domain ).Trim()
         supported = false
@@ -196,17 +197,17 @@ Function NewRedditVideoList(jsonObject As Object) As Object
             video = NewRedditVideo( record )
             supported = true
         else if ( domain = "docs.google.com" OR domain = "drive.google.com" ) then
-            video = NewRedditVideo( record, "GDrive" )
+            video = NewRedditVideo( record, constants.sGOOGLE_DRIVE )
             supported = true
         else if ( domain = "gfycat.com" ) then
             video = NewRedditGfycatVideo( record )
             supported = true
         else if ( domain = "liveleak.com" ) then
-            video = NewRedditURLVideo( record, "LiveLeak" )
+            video = NewRedditURLVideo( record, constants.sLIVELEAK )
             video["URL"] = video["URL"] + "&ajax=1"
             supported = true
         else if ( domain = "vine.co" ) then
-            video = NewRedditURLVideo( record, "Vine" )
+            video = NewRedditURLVideo( record, constants.sVINE )
             supported = true
         end if
         if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
@@ -251,6 +252,7 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     ' The URL needs to be decoded prior to attempting to match
     decodedUrl = URLDecode( htmlDecode( jsonObject.data.url ) )
     yt = getYoutube()
+    constants = getConstants()
     ytMatches = yt.ytIDRegex.Match( decodedUrl )
     url = jsonObject.data.url
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
@@ -261,42 +263,55 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     id = invalid
 
     ' Check for a video ID
-    if ( ytMatches.Count() > 1 ) then
-        ' Default the PlayStart, since it is read later on
-        video["PlayStart"] = 0
-        ytUrl = NewHttp( decodedUrl )
-        tParam = ytUrl.GetParams( "urlParams" ).get( "t" )
-        if ( tParam <> invalid ) then
-            ' This code gets the timestamp from the normal url param (?t or &t)
-            if ( strtoi( tParam ) <> invalid ) then
-                if ( yt.regexTimestampHumanReadable.Match( tParam ).Count() = 0 ) then
-                    video["PlayStart"]  = strtoi( tParam )
-                else
-                    video["PlayStart"]  = get_human_readable_as_length( tParam )
+    if ( source = constants.sYOUTUBE ) then
+        if ( ytMatches.Count() > 1 ) then
+            ' Default the PlayStart, since it is read later on
+            video["PlayStart"] = 0
+            ytUrl = NewHttp( decodedUrl )
+            tParam = ytUrl.GetParams( "urlParams" ).get( "t" )
+            if ( tParam <> invalid ) then
+                ' This code gets the timestamp from the normal url param (?t or &t)
+                if ( strtoi( tParam ) <> invalid ) then
+                    if ( yt.regexTimestampHumanReadable.Match( tParam ).Count() = 0 ) then
+                        video["PlayStart"]  = strtoi( tParam )
+                    else
+                        video["PlayStart"]  = get_human_readable_as_length( tParam )
+                    end if
+                end if
+            else if ( ytUrl.anchor <> invalid AND ytUrl.anchor.InStr("t=") <> -1 ) then
+                ' This set of code gets the timestamp from the anchor param (#t)
+                playStart = ytUrl.anchor.Mid( ytUrl.anchor.InStr( "t=" ) + 2 )
+                if ( strtoi( playStart ) <> invalid ) then
+                    video["PlayStart"]  = strtoi( playStart )
                 end if
             end if
-        else if ( ytUrl.anchor <> invalid AND ytUrl.anchor.InStr("t=") <> -1 ) then
-            ' This set of code gets the timestamp from the anchor param (#t)
-            playStart = ytUrl.anchor.Mid( ytUrl.anchor.InStr( "t=" ) + 2 )
-            if ( strtoi( playStart ) <> invalid ) then
-                video["PlayStart"]  = strtoi( playStart )
+            id = ytMatches[1]
+            playlistId = getPlaylistId( decodedUrl )
+            if ( playlistId <> invalid ) then
+                video["HasPlaylist"] = true
+                video["PlaylistID"]  = playlistId
+            end if
+        else
+            ' Now check for a playlist link
+            playlistId = getPlaylistId( decodedUrl )
+            if ( playlistId <> invalid ) then
+                video["isPlaylist"] = true
+                id = playlistId
+                video["URL"] = getPlaylistURL( playlistId )
+            else
+                id = invalid
             end if
         end if
-        id = ytMatches[1]
-    else
-        ' Now check for a playlist link
-        ytUrl = NewHttp( decodedUrl )
-        playlistId = ytUrl.GetParams( "urlParams" ).get( "list" )
-        if ( playlistId <> invalid ) then
-            video["isPlaylist"] = true
-            id = playlistId
-            video["URL"] = "http://gdata.youtube.com/feeds/api/playlists/" + id
-        end if
+    else ' Google Drive
+        id = url
     end if
     video["Source"]        = source
     video["ID"]            = id
     video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
     video["Category"]      = "/r/" + jsonObject.data.subreddit
+    if ( firstValid( video[ "HasPlaylist" ], false ) = true ) then
+        video["Category"] = video["Category"] + "      [Playlist Available - Hit * For More Options]"
+    end if
     desc = ""
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
         desc = jsonObject.data.media.oembed.description
@@ -336,7 +351,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
         video["PlayStart"] = 0
         id = gfycatMatches[1]
     end if
-    video["Source"]        = "Gfycat"
+    video["Source"]        = getConstants().sGFYCAT
     video["ID"]            = id
     video["Title"]         = Left( htmlDecode( jsonObject.data.title ), 100)
     video["Category"]      = "/r/" + jsonObject.data.subreddit
@@ -356,7 +371,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
     else
         thumb = jsonObject.data.thumbnail
     end if
-    thumb = getDefaultThumb( thumb, "Gfycat" )
+    thumb = getDefaultThumb( thumb, video["Source"] )
     video["Thumb"]         = thumb
     video["URL"]           = invalid
     return video
@@ -408,21 +423,38 @@ End Function
 
 Function getDefaultThumb( currentThumb as String, source as String ) as String
     if ( currentThumb = invalid OR ( Len( currentThumb ) = 0 ) OR currentThumb = "default" OR currentThumb = "nsfw" ) then
-        if ( Source = "YouTube" ) then
+        constants = getConstants()
+        if ( Source = constants.sYOUTUBE ) then
             currentThumb = "pkg:/images/no_thumb.jpg"
-        else if ( Source = "GDrive" ) then
+        else if ( Source = constants.sGOOGLE_DRIVE ) then
             currentThumb = "pkg:/images/GDrive.jpg"
-        else if ( Source = "Gfycat" ) then
+        else if ( Source = constants.sGFYCAT ) then
             currentThumb = "pkg:/images/gfycat.png"
-        else if ( Source = "LiveLeak" ) then
+        else if ( Source = constants.sLIVELEAK ) then
             currentThumb = "pkg:/images/LiveLeak.jpg"
-        else if ( Source = "Vine" ) then
+        else if ( Source = constants.sVINE ) then
             currentThumb = "pkg:/images/vine.jpg"
         else
             currentThumb = invalid
         end if
     end if
     return currentThumb
+End Function
+
+Function getPlaylistId( url as String ) as Dynamic
+    retVal = invalid
+    if ( url <> invalid ) then
+        ytUrl = NewHttp( url )
+        playlistId = ytUrl.GetParams( "urlParams" ).get( "list" )
+        if ( playlistId <> invalid AND Len( playlistId.Trim() ) > 0 ) then
+            retVal = playlistId
+        end if
+    end if
+    return retVal
+End Function
+
+Function getPlaylistURL( playlistId as String ) as String
+    return "http://gdata.youtube.com/feeds/api/playlists/" + playlistId
 End Function
 
 '******************************************************************************
@@ -438,11 +470,12 @@ Function GetRedditMetaData(videoList As Object) as Object
     metadata = []
 
     for each video in videoList
+        isPlaylist = firstValid( video["isPlaylist"], false )
         meta                           = {}
         meta["ContentType"]            = "movie"
         meta["ID"]                     = video["ID"]
         meta["TitleSeason"]            = video["Title"]
-        if ( video["isPlaylist"] = true ) then
+        if ( isPlaylist = true ) then
             meta["Title"]                  = "[" + video["Source"] + " Playlist] Score: " + tostr( video["Score"] )
         else
             meta["Title"]                  = "[" + video["Source"] + "] Score: " + tostr( video["Score"] )
@@ -461,7 +494,9 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["PlayStart"]              = video["PlayStart"]
         meta["Source"]                 = video["Source"]
         meta["URL"]                    = video["URL"]
-        meta["isPlaylist"]             = firstValid( video["isPlaylist"], false )
+        meta["isPlaylist"]             = isPlaylist
+        meta["HasPlaylist"]            = firstValid( video[ "HasPlaylist" ], false )
+        meta["PlaylistID"]             = firstValid( video[ "PlaylistID" ], invalid )
         metadata.Push(meta)
     end for
 

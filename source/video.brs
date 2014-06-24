@@ -78,7 +78,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "2"
+    this.HISTORY_VERSION = "3"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -268,7 +268,7 @@ End Sub
 '********************************************************************
 ' YouTube Poster/Video List Utils
 '********************************************************************
-Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, categoryData = invalid as Dynamic, message = "Loading..." as String)
+Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, categoryData = invalid as Dynamic, message = "Loading..." as String, useXMLTitle = false as Dynamic)
 
     'fields = m.FieldsToInclude
     'if Instr(0, APIRequest, "?") = 0 then
@@ -295,8 +295,18 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
         'PrintAny(0, "categoryList:", categories)
         m.DisplayVideoListFromVideoList([], title, xml.link, screen, categoryData)
     else
-        videos = m.newVideoListFromXML(xml.entry)
-        m.DisplayVideoListFromVideoList(videos, title, xml.link, screen, invalid)
+        if ( useXMLTitle = true AND xml.Title <> invalid AND type( xml.Title ) = "roXMLList" ) then
+            newTitle = xml.Title[0].GetText()
+            breadA = "Playlist"
+            if ( xml.Author <> invalid AND type( xml.Author.name ) = "roXMLList" ) then
+                breadA = xml.Author.name[0].GetText()
+            end if
+            screen.SetBreadcrumbText( breadA, newTitle )
+        else
+            newTitle = title
+        end if
+        videos = m.newVideoListFromXML( xml.entry )
+        m.DisplayVideoListFromVideoList( videos, newTitle, xml.link, screen, invalid )
     end if
 End Sub
 
@@ -507,7 +517,7 @@ End Function
 
 Function GetVideoMetaData(videos As Object)
     metadata = []
-
+    constants = getConstants()
     for each video in videos
         meta = CreateObject("roAssociativeArray")
         meta.ContentType = "movie"
@@ -535,7 +545,7 @@ Function GetVideoMetaData(videos As Object)
         meta["Source"]                 = video["Source"]
         meta["PlayStart"]              = 0
         meta["SwitchingStrategy"]      = "no-adaptation"
-        meta["Source"]                 = "YouTube"
+        meta["Source"]                 = constants.sYOUTUBE
 
         metadata.Push(meta)
     end for
@@ -751,7 +761,7 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                 else if (msg.GetIndex() = 6) then ' Linked videos
                     m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
                 else if (msg.GetIndex() = 7) then ' View playlist
-                    m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...")
+                    m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...", true)
                 end if
             else if ( msg.isRemoteKeyPressed() ) then
                 if ( msg.GetIndex() = 4 AND vidCount > 1 ) then  ' left arrow
@@ -811,14 +821,14 @@ Function BuildButtons_impl() as Object
     if ( isPlaylist = false ) then
         if ( m.video[ "Live" ] = false AND m.video[ "PlayStart" ] > 0 ) then
             resumeEnabled = true
-            buttons[ "resume"]         = m.screen.AddButton( 0, "Resume" )
-            buttons[ "restart"]        = m.screen.AddButton( 5, "Play from beginning" )
+            buttons[ "resume" ]         = m.screen.AddButton( 0, "Resume" )
+            buttons[ "restart" ]        = m.screen.AddButton( 5, "Play from beginning" )
         else
-            buttons[ "play"]           = m.screen.AddButton( 0, "Play")
+            buttons[ "play" ]           = m.screen.AddButton( 0, "Play")
         end if
-        buttons[ "play_all"]           = m.screen.AddButton( 1, "Play All")
+        buttons[ "play_all" ]           = m.screen.AddButton( 1, "Play All")
     else
-        buttons[ "view_playlist"]      = m.screen.AddButton( 7, "View Playlist" )
+        buttons[ "view_playlist" ]      = m.screen.AddButton( 7, "View Playlist" )
     end if
     if ( videoAuthor <> invalid) then
         ' Hide related videos if the Resume/Play from beginning options are enabled
@@ -948,7 +958,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     ampersandRegex = CreateObject("roRegex", "%26", "ig")
     equalsRegex = CreateObject("roRegex", "%3D", "ig")
 
-    if ( video["Source"] = "GDrive" ) then
+    if ( video["Source"] = getConstants().sGOOGLE_DRIVE ) then
         urlEncodedRegex = CreateObject( "roRegex", Chr(34) + "url_encoded_fmt_stream_map" + Chr(34) + "\:" + Chr(34) + "([^(" + Chr(34) + "|&|$)]*)" + Chr(34), "ig" )
         commaRegex = CreateObject( "roRegex", ",", "g" )
         ampersandRegex = CreateObject( "roRegex", "\\u0026", "ig" )
@@ -1025,8 +1035,8 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                                 topQuality% = itag%
                             end if
                         end if
-                    else
-                        print "Tried to parse invalid itag value: " ; tostr ( itag% )
+                    'else
+                    '    print "Tried to parse invalid itag value: " ; tostr ( itag% )
                     end if
                 end if
             end for
@@ -1197,15 +1207,16 @@ end function
 Function video_get_qualities(video as Object) As Integer
     if ( video <> invalid AND video["Streams"] <> invalid ) then
         source = video["Source"]
-        if ( source = invalid OR source = "YouTube" ) then
+        constants = getConstants()
+        if ( source = invalid OR source = constants.sYOUTUBE ) then
             getYouTubeMP4Url( video )
-        else if ( source = "GDrive" ) then
+        else if ( source = constants.sGOOGLE_DRIVE ) then
             getYouTubeMP4Url( video )
-        else if ( source = "Gfycat" ) then
+        else if ( source = constants.sGFYCAT ) then
             getGfycatMP4Url( video )
-        else if ( source = "LiveLeak" ) then
+        else if ( source = constants.sLIVELEAK ) then
             getLiveleakMP4Url( video )
-        else if ( source = "Vine" ) then
+        else if ( source = constants.sVINE ) then
             getVineMP4Url( video )
         end if
 

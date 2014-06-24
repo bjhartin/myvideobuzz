@@ -573,16 +573,21 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
         sleepId = 2
         doneId = 3
         detailsId = 4
+        playlistId = 5
         dialog.addButton( reverseId, "Reverse Playlist Order" )
     else
         reverseId = 0
         sleepId = 1
         doneId = 2
         detailsId = 3
+        playlistId = 4
     end if
     dialog.addButton( sleepId, "Set Sleep Timer" )
     if ( videoObj["Description"] <> invalid AND len( videoObj["Description"] ) > 0 ) then
         dialog.addButton( detailsId, "View Full Description" )
+    end if
+    if ( firstValid( videoObj[ "HasPlaylist" ], false ) = true ) then
+        dialog.addButton( playlistId, "View Playlist" )
     end if
     dialog.addButton( doneId, "Done" )
     dialog.Show()
@@ -590,13 +595,14 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
         dlgMsg = wait(2000, dialog.GetMessagePort())
         if (type(dlgMsg) = "roMessageDialogEvent") then
             if (dlgMsg.isButtonPressed()) then
+                buttonPressed = dlgMsg.GetIndex()
                 ' Handles the "Reverse Playlist Order" item
-                if (dlgMsg.GetIndex() = reverseId) then
+                if ( buttonPressed = reverseId ) then
                     m.youtube.reversed_playlist = NOT( m.youtube.reversed_playlist )
                     updateVListDialogText( dialog, true, showReverse )
                     return 1 ' Re-open the options
                 ' This will be for the sleep timer menu
-                else if (dlgMsg.GetIndex() = sleepId) then
+                else if ( buttonPressed = sleepId ) then
                     dialog.Close()
                     ret = SleepTimerClicked()
                     if (ret <> 0) then
@@ -604,7 +610,7 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                         updateVListDialogText( dialog, true, showReverse )
                     end if
                     return 1 ' Re-open the options
-                else if ( dlgMsg.GetIndex() = detailsId ) then
+                else if ( buttonPressed = detailsId ) then
                     dialog.Close()
                     descr = videoObj["Description"]
                     if ( videoObj["FullDescription"] <> invalid ) then
@@ -612,18 +618,27 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                     end if
                     uitkTextScreen( "Full Description", videoObj["TitleSeason"], descr )
                     return 0
-                else if (dlgMsg.GetIndex() = doneId) then
+                else if ( buttonPressed = playlistId ) then ' View Playlist
+                    plId = firstValid( videoObj[ "PlaylistID" ], invalid )
+                    if ( plId <> invalid ) then
+                        dialog.Close()
+                        m.youtube.FetchVideoList( getPlaylistURL( plId ), videoObj[ "TitleSeason" ], invalid, invalid, "Loading playlist...", true )
+                        return 0
+                    else
+                        print "Couldn't find playlist id for URL: " ; videoObj["URL"]
+                    end if
+                else if ( buttonPressed = doneId ) then
                     dialog.Close()
                     exit while
                 end if
-            else if (dlgMsg.isScreenClosed()) then
+            else if ( dlgMsg.isScreenClosed() ) then
                 dialog.Close()
                 exit while
             else
                 ' print ("Unhandled msg type")
                 exit while
             end if
-        else if (dlgMsg = invalid) then
+        else if ( dlgMsg = invalid ) then
             CheckForMCast()
         else
             ' print ("Unhandled msg: " + type(dlgMsg))

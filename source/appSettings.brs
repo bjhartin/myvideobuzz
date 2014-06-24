@@ -254,5 +254,12 @@ Function LoadConstants() as Object
     this.pREDDIT_ENABLED    = "RedditEnabled"
     this.pVIDEO_QUALITY     = "VideoQuality"
 
+    ' Source strings
+    this.sYOUTUBE           = "YouTube"
+    this.sGOOGLE_DRIVE      = "GDrive"
+    this.sVINE              = "Vine"
+    this.sGFYCAT            = "Gfycat"
+    this.sLIVELEAK          = "LiveLeak"
+
     return this
 End Function
