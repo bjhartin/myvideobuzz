@@ -1,3 +1,24 @@
+'**************************************************
+' @param prefData associative array with the following items:
+'       prefName as String
+'       prefDesc as String
+'       prefDefault as Dynamic
+'       preyKey  as String
+'       prefType as String
+'       enumType (Optional) as Dynamic
+'**************************************************
+Function createPref( prefData as Object ) as Object
+    base = {}
+    base.name       = prefData.prefName
+    base.key        = prefData.prefKey
+    base.value      = strtoi( firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) ) )
+    base.default    = prefData.prefDefault
+    base.type       = prefData.prefType
+    base.desc       = prefData.prefDesc
+    base.values     = getEnumValuesForType( prefData.prefType, prefData.enumType )
+    return base
+End Function
+
 Function LoadPreferences() as Object
     prefs = {}
     consts = getConstants()
@@ -14,6 +35,22 @@ Function LoadPreferences() as Object
         prefKey: consts.pREDDIT_ENABLED,
         prefType: "enum",
         enumType: consts.eENABLED_DISABLED
+        })
+
+    prefs.RedditFeed = createPref( { prefName: "Reddit Feed",
+        prefDesc: "Which reddit feed to query?",
+        prefDefault: consts.sRED_HOT,
+        prefKey: consts.pREDDIT_FEED,
+        prefType: "enum",
+        enumType: consts.eREDDIT_QUERIES
+        })
+
+    prefs.RedditFilter = createPref( { prefName: "Reddit Time Filter",
+        prefDesc: "Which time filter for the Top and Controversial feeds to apply?",
+        prefDefault: consts.sRED_HOUR,
+        prefKey: consts.pREDDIT_FILTER,
+        prefType: "enum",
+        enumType: consts.eREDDIT_FILTERS
         })
 
     prefs.getPrefData  = getPrefData_impl
@@ -45,27 +82,6 @@ Function getPrefData_impl( key as String ) as Dynamic
         retVal = m[key]
     end if
     return retVal
-End Function
-
-'**************************************************
-' @param prefData associative array with the following items:
-'       prefName as String
-'       prefDesc as String
-'       prefDefault as Dynamic
-'       preyKey  as String
-'       prefType as String
-'       enumType (Optional) as Dynamic
-'**************************************************
-Function createPref( prefData as Object ) as Object
-    base = {}
-    base.name       = prefData.prefName
-    base.key        = prefData.prefKey
-    base.value      = strtoi( firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) ) )
-    base.default    = prefData.prefDefault
-    base.type       = prefData.prefType
-    base.desc       = prefData.prefDesc
-    base.values     = getEnumValuesForType( prefData.prefType, prefData.enumType )
-    return base
 End Function
 
 Function loadPrefValue( key as String ) as Dynamic
@@ -222,15 +238,39 @@ Function getEnumValuesForType( prefType as String, enumType = invalid as Dynamic
     if ( prefType = "bool" ) then
         retVal = [ "false", "true" ]
     else if ( prefType = "enum" ) then
+        constants = getConstants()
         if ( enumType = invalid ) then
             print "Enum type required for getEnumValuesForType with prefType of enum"
-        else if ( enumType = getConstants().eVID_QUALITY ) then
+        else if ( enumType = constants.eVID_QUALITY ) then
             retVal = [ "No Preference", "Force Highest", "Force Lowest" ]
-        else if ( enumType = getConstants().eENABLED_DISABLED ) then
+        else if ( enumType = constants.eENABLED_DISABLED ) then
             retVal = [ "Enabled", "Disabled" ]
+        else if ( enumType = constants.eREDDIT_QUERIES ) then
+            retVal = [ "Hot", "New", "Rising", "Top", "Controversial" ]
+        else if ( enumType = constants.eREDDIT_FILTERS ) then
+            retVal = [ "This Hour", "Today", "This Week", "This Year", "All Time" ]
         else
             print "enum must have the enumType defined!"
         end if
+    end if
+    return retVal
+End Function
+
+Function getEnumValueForType( enumType as String, index as Integer ) as Object
+    retVal = invalid
+    constants = getConstants()
+    if ( enumType = invalid ) then
+        print "Enum type required for getEnumValueForType"
+    else if ( enumType = constants.eVID_QUALITY ) then
+        retVal = [ "No Preference", "Force Highest", "Force Lowest" ][index]
+    else if ( enumType = constants.eENABLED_DISABLED ) then
+        retVal = [ "Enabled", "Disabled" ][index]
+    else if ( enumType = constants.eREDDIT_QUERIES ) then
+        retVal = [ "Hot", "New", "Rising", "Top", "Controversial" ][index]
+    else if ( enumType = constants.eREDDIT_FILTERS ) then
+        retVal = [ "Hour", "Day", "Week", "Year", "All" ][index]
+    else
+        print "enum must have the enumType defined!"
     end if
     return retVal
 End Function
@@ -249,10 +289,14 @@ Function LoadConstants() as Object
     ' Enumeration type constants
     this.eVID_QUALITY      = "vidQuality"
     this.eENABLED_DISABLED = "enabledDisabled"
+    this.eREDDIT_QUERIES   = "redditQueryTypes"
+    this.eREDDIT_FILTERS    = "redditFilterTypes"
 
     ' Property Keys
     this.pREDDIT_ENABLED    = "RedditEnabled"
     this.pVIDEO_QUALITY     = "VideoQuality"
+    this.pREDDIT_FEED       = "RedditFeed"
+    this.pREDDIT_FILTER     = "RedditFilter"
 
     ' Source strings
     this.sYOUTUBE           = "YouTube"
@@ -260,6 +304,21 @@ Function LoadConstants() as Object
     this.sVINE              = "Vine"
     this.sGFYCAT            = "Gfycat"
     this.sLIVELEAK          = "LiveLeak"
+
+    ' Reddit Query Indices
+    this.sRED_HOT           = 0
+    this.sRED_NEW           = 1
+    this.sRED_RISING        = 2
+    this.sRED_TOP           = 3
+    this.sRED_CONTROVERSIAL = 4
+    
+    ' Reddit Filter Indices
+    this.sRED_HOUR          = 0
+    this.sRED_TODAY         = 1
+    this.sRED_WEEK          = 2
+    this.sRED_YEAR          = 3
+    this.sRED_ALL           = 4
+
 
     return this
 End Function

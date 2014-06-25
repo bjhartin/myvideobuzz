@@ -12,13 +12,21 @@
 '     multireddits look like this: videos+funny+humor for /r/videos, /r/funny, and /r/humor
 '******************************************************************************
 Sub ViewReddits(youtube as Object, url = "videos" as String)
-    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", "Reddit" )
+    prefs = getPrefs()
+    redditQueryType = firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ), "Hot" )
+    redditFilterType = firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "All" )
+    title = "Reddit (" + redditQueryType
+    if ( redditQueryType = "Top" or redditQueryType = "Controversial" ) then
+        title = title + " - " + redditFilterType + ")"
+    else
+        title = title + ")"
+    end if
+    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", title )
     screen.showMessage( "Loading subreddits..." )
     ' Added for https thumbnail support.
     screen.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
     screen.SetCertificatesDepth( 3 )
     screen.InitClientCertificates()
-    title = "Reddit"
     categories = RedditCategoryList()
     if (url = "videos") then
         tempSubs = RegRead("subreddits", "reddit")
@@ -146,11 +154,14 @@ End Function
 '               status = the HTTP status code response from the GET call
 '******************************************************************************
 Function QueryReddit(multireddits = "videos" as String) As Object
+    prefs = getPrefs()
     method = "GET"
     if (Instr(0, multireddits, "http://")) then
         http = NewHttp(multireddits)
     else
-        http = NewHttp("http://www.reddit.com/r/" + multireddits + "/hot.json")
+        redditQueryType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ) ), "Hot" )
+        redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ) ), "All" )
+        http = NewHttp("http://www.reddit.com/r/" + multireddits + "/" + redditQueryType + ".json?t=" + redditFilterType)
     end if
     headers = { }
 
@@ -231,11 +242,15 @@ Function RedditCategoryList() As Object
     else
         subredditArray = ["videos"]
     end if
+    prefs = getPrefs()
+    constants = getConstants()
     for each record in subredditArray
         category        = CreateObject("roAssociativeArray")
         category.title  = record
-        category.link   = "http://www.reddit.com/r/" + record + "/hot.json"
-        category.links  = CreateObject("roList")
+        redditQueryType = LCase( firstValid( getEnumValueForType( constants.eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ), "hot" ) )
+        redditFilterType = LCase( firstValid( getEnumValueForType( constants.eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "all" ) )
+        category.link   = "http://www.reddit.com/r/" + record + "/" + redditQueryType + ".json?t=" + redditFilterType
+        category.links  = []
         category.links.Push(category.link)
         categoryList.Push(category)
     next
@@ -522,6 +537,18 @@ Sub EditRedditSettings()
             HDPosterUrl:"pkg:/images/reddit_beta.jpg",
             SDPosterUrl:"pkg:/images/reddit_beta.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_ENABLED )
+        },
+        {
+            Title: "Reddit Feed to Display",
+            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pREDDIT_FEED )
+        },
+        {
+            Title: "Reddit Filter to Apply",
+            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pREDDIT_FILTER )
         }
     ]
 
