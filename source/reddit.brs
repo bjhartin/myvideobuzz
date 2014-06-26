@@ -88,7 +88,12 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                     previous = linksList.Count() > 1
                     return { isContentList: true, content: doQuery( theLink, previous, categories[category_idx] ) }
                 else if ( video[set_idx]["isPlaylist"] = true ) then
-                    youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist...")
+                    ' printAA( video[set_idx] )
+                    if ( video[set_idx]["Source"] = GetConstants().sYOUTUBE ) then
+                        youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist..." )
+                    else if ( video[set_idx]["Source"] = GetConstants().sGOOGLE_DRIVE ) then
+                        getGDriveFolderContents( video[set_idx] )
+                    end if
                     return { isContentList: false, vidIdx: set_idx }
                 else
                     vidIdx% = youtube.VideoDetails(video[set_idx], "/r/" + categories[category_idx].title, video, set_idx)
@@ -318,7 +323,14 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
             end if
         end if
     else ' Google Drive
-        id = url
+        regexFolderView = CreateObject( "roRegex", ".*folderview.*", "i" )
+        if ( regexFolderView.IsMatch( url ) = true ) then
+            video["isPlaylist"] = true
+            id = url
+            video["URL"] = id
+        else
+            id = url
+        end if
     end if
     video["Source"]        = source
     video["ID"]            = id
@@ -493,13 +505,16 @@ Function GetRedditMetaData(videoList As Object) as Object
         meta["ID"]                     = video["ID"]
         meta["TitleSeason"]            = video["Title"]
         if ( isPlaylist = true ) then
-            meta["Title"]              = "[" + source + " Playlist] Score: " + tostr( video["Score"] )
+            meta["Title"]              = "[" + source + " Playlist]"
         else
             if ( hasPlaylist ) then
                 ' Mark the title with a + to denote it has a playlist (make it easier to see from the video list)
                 source = source + "+"
             end if
-            meta["Title"]              = "[" + source + "] Score: " + tostr( video["Score"] )
+            meta["Title"]              = "[" + source + "]"
+        end if
+        if ( video["Score"] <> invalid ) then
+            meta["Title"] = meta["Title"] + " Score: " + tostr( video["Score"] )
         end if
         meta["Actors"]                 = meta["Title"]
         meta["FullDescription"]        = video["Description"]

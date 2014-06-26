@@ -31,7 +31,7 @@ Function InitYouTube() As Object
     this.video        = invalid
 
     'API Calls
-    this.ExecServerAPI = youtube_exec_api
+    this.ExecServerAPI = ExecServerAPI_impl
     this.ExecBatchQuery = ExecBatchQuery_impl
 
     'Search
@@ -78,7 +78,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "4"
+    this.HISTORY_VERSION = "5"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -143,7 +143,7 @@ Sub ExecBatchQuery_impl( xmlContent as String )
     m.FetchVideoList( request, "Videos Linked in Description", invalid )
 End Sub
 
-Function youtube_exec_api(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
+Function ExecServerAPI_impl(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
     'oa = Oauth()
 
     if (username = invalid) then
@@ -221,7 +221,7 @@ End Function
 Function handleYoutubeError(rsp) As Dynamic
     ' Is there a status code? If not, return a connection error.
     if (rsp.status = invalid) then
-        return ShowConnectionFailed()
+        return ShowConnectionFailed( "handleYoutubeError" )
     end if
     ' Don't check for errors if the response code was a 2xx or 3xx number
     if (int(rsp.status / 100) = 2 OR int(rsp.status / 100) = 3) then
@@ -284,7 +284,7 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
         return
     end if
     if (not(isxmlelement(response.xml))) then
-        ShowConnectionFailed()
+        ShowConnectionFailed( "FetchVideoList_impl" )
         return
     end if
 
@@ -314,7 +314,7 @@ End Sub
 Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
     xml = m.ExecServerAPI(APIRequest, username, additionalParams)["xml"]
     if (not(isxmlelement(xml))) then
-        ShowConnectionFailed()
+        ShowConnectionFailed( "ReturnVideoList_impl" )
         return []
     end if
 
@@ -761,7 +761,11 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                 else if (msg.GetIndex() = 6) then ' Linked videos
                     m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
                 else if (msg.GetIndex() = 7) then ' View playlist
-                    m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                    if ( m.video["Source"] = GetConstants().sYOUTUBE ) then
+                        m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                    else if ( m.video["Source"] = GetConstants().sGOOGLE_DRIVE ) then
+                        getGDriveFolderContents( m.video )
+                    end if
                 end if
             else if ( msg.isRemoteKeyPressed() ) then
                 if ( msg.GetIndex() = 4 AND vidCount > 1 ) then  ' left arrow
@@ -819,7 +823,7 @@ Function BuildButtons_impl() as Object
     isPlaylist = firstValid( m.video[ "isPlaylist" ], false )
     videoAuthor = m.video[ "Author" ]
     if ( isPlaylist = false ) then
-        if ( m.video[ "Live" ] = false AND m.video[ "PlayStart" ] > 0 ) then
+        if ( firstValid( m.video[ "Live" ], false ) = false AND firstValid( m.video[ "PlayStart" ], 0 ) > 0 ) then
             resumeEnabled = true
             buttons[ "resume" ]         = m.screen.AddButton( 0, "Resume" )
             buttons[ "restart" ]        = m.screen.AddButton( 5, "Play from beginning" )
@@ -1070,6 +1074,105 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
         print ("Nothing in urlEncodedFmtStreamMap")
     end if
     return video["Streams"]
+End Function
+
+Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie = "" as String)
+    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", firstValid( video["TitleSeason"], "GDrive Playlist" ) )
+    screen.showMessage( "Loading Google Drive Folder Contents" )
+    videos = []
+    if ( video["URL"] <> invalid ) then
+        gdriveFolderRegex1 = CreateObject( "roRegex", "viewerItems: \[(\[.*\]\n)\]", "igs" )
+        url = video["URL"]
+        isSSL = false
+        if ( Left( LCase( url ), 5) = "https" ) then
+            isSSL = true
+        end if
+
+        port = CreateObject( "roMessagePort" )
+        ut = CreateObject( "roUrlTransfer" )
+        ut.SetPort( port )
+        ut.AddHeader( "User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0" )
+        ut.AddHeader( "Cookie", loginCookie )
+        ut.SetUrl( url )
+        if ( isSSL = true ) then
+            ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+            ut.SetCertificatesDepth( 3 )
+            ut.InitClientCertificates()
+        end if
+        if ( ut.AsyncGetToString() ) then
+            while ( true )
+                msg = Wait( timeout, port )
+                if ( type(msg) = "roUrlEvent" ) then
+                    status = msg.GetResponseCode()
+                    if ( status = 200 ) then
+                        responseString = msg.GetString()
+                        matches = gdriveFolderRegex1.Match( responseString )
+                        if ( matches <> invalid AND matches.Count() > 1 ) then
+                            vidList = matches[1]
+                            itemRegex = CreateObject( "roRegex", "\]\n+,", "igs" )
+                            splitUp = itemRegex.Split( vidList )
+                            ' print "Split gave " ; tostr( splitUp.Count() ) ; " items"
+                            titleRegex = CreateObject( "roRegex", "\[,," + Quote() + "(.*)" + Quote() + ",(" + Quote() + "http|,,,,)", "ig" )
+                            urlRegex = CreateObject( "roRegex", "\d+," + Quote() + "(http.*edit)", "ig" )
+                            for each split in splitUp
+                                vidUrlMatch = urlRegex.Match( split )
+                                if ( vidUrlMatch.Count() > 1 ) then
+                                    titleMatch = titleRegex.Match( split )
+                                    if ( titleMatch.Count() > 1 ) then
+                                        videos.Push( NewGDriveFolderVideo( titleMatch[1], vidUrlMatch[1] ) )
+                                    else
+                                        videos.Push( NewGDriveFolderVideo( "Failed title parse", vidUrlMatch[1] ) )
+                                        print "Failed to match video title for string: " ; tostr( split )
+                                    end if
+                                else
+                                    print "Failed to find video URL in string: " ; tostr( split )
+                                end if
+                            next
+                        end if
+                    end if
+                    exit while
+                else if ( type(msg) = "Invalid" ) then
+                    ut.AsyncCancel()
+                    exit while
+                end if
+            end while
+        end if
+    end if
+    if ( videos.Count() > 0 ) then
+        m.youtube.DisplayVideoListFromVideoList( videos, video["TitleSeason"], invalid, screen, invalid, GetRedditMetaData )
+    end if
+end sub
+
+'******************************************************************************
+' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
+' This is a special version for Google Drive folder items. The information available for these videos is extremely limited.
+' @param title  The title of the video
+' @param url    The URL for the video
+' @return an roAssociativeArray of metadata for the current result
+'******************************************************************************
+Function NewGDriveFolderVideo(title as String, url as String) As Object
+    video               = {}
+    ' The URL needs to be decoded prior to attempting to match
+    decodedUrl = URLDecode( htmlDecode( url ) )
+    yt = getYoutube()
+    constants = getConstants()
+    video["URL"] = url
+
+    id = url
+
+    regexFolderView = CreateObject( "roRegex", ".*folderview.*", "i" )
+    if ( regexFolderView.IsMatch( url ) = true ) then
+        video["isPlaylist"] = true
+        video["URL"] = id
+    end if
+
+    video["Source"]        = constants.sGOOGLE_DRIVE
+    video["ID"]            = id
+    video["Title"]         = Left( htmlDecode( title ), 100)
+
+    video["Description"]   = ""
+    video["Thumb"]         = getDefaultThumb( "", constants.sGOOGLE_DRIVE )
+    return video
 End Function
 
 Function getGfycatMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object

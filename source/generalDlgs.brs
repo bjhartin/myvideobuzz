@@ -54,8 +54,8 @@ End Function
 '******************************************************
 ' Show connection error dialog with only an OK button
 '******************************************************
-Sub ShowConnectionFailed()
-    Dbg("Connection Failed")
+Sub ShowConnectionFailed( source = "" as String )
+    Dbg("Connection Failed: " + source)
     title = "Can't connect to service"
     text  = GetConnectionFailedText()
     ShowErrorDialog(text, title)
