@@ -43,10 +43,10 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
     ' Category selection function
      oncontent_callback = [categories, m,
         function(categories, youtube, set_idx, unused)
-            if (categories.Count() > 0) then
+            if ( categories.Count() > 0 ) then
                 categories[set_idx].links.Clear()
                 categories[set_idx].links.Push( categories[set_idx].link )
-                metadata = doQuery(categories[set_idx].link, false, categories[set_idx])
+                metadata = doQuery( categories[set_idx].link, false, categories[set_idx] )
                 return metadata
             else
                 return []
@@ -103,7 +103,7 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                 print("Invalid video data")
             end if
         end function]
-        uitkDoCategoryMenu(categoryList, screen, oncontent_callback, onclick_callback, onplay_callback)
+        uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, false, true )
 End Sub
 
 '******************************************************************************
@@ -114,19 +114,19 @@ End Sub
 ' @param categoryObject the (optional) category object for the current subreddit (category)
 '******************************************************************************
 Function doQuery(multireddits = "videos" as String, includePrevious = false as Boolean, categoryObject = invalid as Dynamic) as Object
-    response = QueryReddit(multireddits)
-    if (response.status = 403) then
+    response = QueryReddit( multireddits )
+    if ( response.status = 403 ) then
         ShowErrorDialog(multireddits + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
         return []
     end if
-    if (response.status <> 200 OR response.json = invalid OR response.json.kind <> "Listing") then
+    if ( response.status <> 200 OR response.json = invalid OR response.json.kind <> "Listing" ) then
         ShowConnectionFailed()
         return []
     end if
 
     ' Everything is OK, display the list
     json = response.json
-    metadata = GetRedditMetaData(NewRedditVideoList(json.data.children))
+    metadata = GetRedditMetaData( NewRedditVideoList( json.data.children ) )
 
     ' Now add the 'More results' button
     for each link in response.links
@@ -162,10 +162,10 @@ Function QueryReddit(multireddits = "videos" as String) As Object
     prefs = getPrefs()
     method = "GET"
     if (Instr(0, multireddits, "http://")) then
-        http = NewHttp(multireddits)
+        http = NewHttp( multireddits )
     else
-        redditQueryType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ) ), "Hot" )
-        redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ) ), "All" )
+        redditQueryType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ), "Hot" ) )
+        redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "All" ) )
         http = NewHttp("http://www.reddit.com/r/" + multireddits + "/" + redditQueryType + ".json?t=" + redditFilterType)
     end if
     headers = { }
@@ -247,14 +247,10 @@ Function RedditCategoryList() As Object
     else
         subredditArray = ["videos"]
     end if
-    prefs = getPrefs()
-    constants = getConstants()
     for each record in subredditArray
         category        = CreateObject("roAssociativeArray")
         category.title  = record
-        redditQueryType = LCase( firstValid( getEnumValueForType( constants.eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ), "hot" ) )
-        redditFilterType = LCase( firstValid( getEnumValueForType( constants.eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "all" ) )
-        category.link   = "http://www.reddit.com/r/" + record + "/" + redditQueryType + ".json?t=" + redditFilterType
+        category.link   = record
         category.links  = []
         category.links.Push(category.link)
         categoryList.Push(category)

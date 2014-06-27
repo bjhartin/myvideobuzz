@@ -4,9 +4,9 @@
 '    Display "menu" items in a Poster Screen.
 '
 Library "v30/bslCore.brs"
-Function uitkPreShowPosterMenu(ListStyle="flat-category" as String, breadA = "Home", breadB = invalid) As Object
-    port=CreateObject("roMessagePort")
-    screen = CreateObject("roPosterScreen")
+Function uitkPreShowPosterMenu( ListStyle="flat-category" as String, breadA = "Home", breadB = invalid ) As Object
+    port = CreateObject( "roMessagePort" )
+    screen = CreateObject( "roPosterScreen" )
     screen.SetMessagePort(port)
 
     if (breadA <> invalid and breadB <> invalid) then
@@ -406,7 +406,7 @@ Function uitkDoListMenu(posterdata, screen, onselect_callback=invalid) As Intege
 End Function
 
 
-Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, onclick_callback = invalid, onplay_func = invalid, isPlaylist = false) As Integer
+Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, onclick_callback = invalid, onplay_func = invalid, isPlaylist = false as Boolean, isReddit = false as Boolean) As Integer
     'Set current category to first in list
     category_idx = 0
     contentlist = []
@@ -418,13 +418,13 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
 
     contentlist = content_f( contentdata1, contentdata2, 0, m.youtube.reversed_playlist )
 
-    if (contentlist.Count() = 0) then
-        screen.SetContentList([])
-        screen.clearmessage()
-        screen.showmessage("No viewable content in this section")
+    if ( contentlist.Count() = 0 ) then
+        screen.SetContentList( [] )
+        screen.ClearMessage()
+        screen.ShowMessage( "No viewable content in this section" )
     else
-        screen.SetContentList(contentlist)
-        screen.clearmessage()
+        screen.SetContentList( contentlist )
+        screen.ClearMessage()
     end if
     screen.Show()
 
@@ -500,6 +500,7 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                     ' Stops the annoyance when a video finishes playing and the banner gets re-selected.
                     screen.SetFocusToFilterBanner( false )
                     onplay_func(contentlist[idx%])
+                ' If the * button is pressed while viewing a playlist, show the option to reverse it.
                 else if ( awaiting_timeout = false AND isPlaylist = true AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
                     reversePlaylist = m.youtube.reversed_playlist
                     while ( VListOptionDialog( true, contentlist[idx%] ) = 1 )
@@ -507,20 +508,47 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                     if ( reversePlaylist <> m.youtube.reversed_playlist ) then
                         ' This calls the content callback
                         contentlist = content_callback[2]( content_callback[0], content_callback[1], category_idx, m.youtube.reversed_playlist )
-                        if (contentlist.Count() = 0) then
-                            screen.SetContentList([])
-                            screen.clearmessage()
-                            screen.showmessage("No viewable content in this section")
+                        if ( contentlist.Count() = 0 ) then
+                            screen.SetContentList( [] )
+                            screen.ClearMessage()
+                            screen.ShowMessage( "No viewable content in this section" )
                         else
-                            screen.SetContentList(contentlist)
-                            screen.clearmessage()
-                            screen.SetFocusedListItem(0)
+                            screen.SetContentList( contentlist )
+                            screen.ClearMessage()
+                            screen.SetFocusedListItem( 0 )
                             screen.Show()
                         end if
                     end if
                 else if ( awaiting_timeout = false AND isPlaylist = false AND msg.GetIndex() = buttonCodes.BUTTON_INFO_PRESSED ) then
-                    while ( VListOptionDialog( false, contentlist[idx%] ) = 1 )
+                    redditFeedType = m.prefs.getPrefValue( m.prefs.RedditFeed.key )
+                    redditFilterType = m.prefs.getPrefValue( m.prefs.RedditFilter.key )
+                    while ( VListOptionDialog( false, contentlist[idx%], isReddit ) = 1 )
                     end while
+                    redditFeedTypeAfter = m.prefs.getPrefValue( m.prefs.RedditFeed.key )
+                    redditFilterTypeAfter = m.prefs.getPrefValue( m.prefs.RedditFilter.key )
+                    if ( redditFeedType <> redditFeedTypeAfter OR redditFilterType <> redditFilterTypeAfter ) then
+                        redditQueryTypeText = firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, redditFeedTypeAfter ), "Hot" )
+                        redditFilterTypeText = firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, redditFilterTypeAfter ), "All" )
+                        contentlist = content_callback[2]( content_callback[0], content_callback[1], category_idx, m.youtube.reversed_playlist )
+                        title = "Reddit (" + redditQueryTypeText
+                        if ( redditQueryTypeText = "Top" or redditQueryTypeText = "Controversial" ) then
+                            title = title + " - " + redditFilterTypeText + ")"
+                        else
+                            title = title + ")"
+                        end if
+                        screen.SetBreadcrumbText( title, "" )
+                        screen.SetTitle( title )
+                        if ( contentlist.Count() = 0 ) then
+                            screen.SetContentList( [] )
+                            screen.ClearMessage()
+                            screen.ShowMessage( "No viewable content in this section" )
+                        else
+                            screen.SetContentList( contentlist )
+                            screen.ClearMessage()
+                            screen.SetFocusedListItem( 0 )
+                            screen.Show()
+                        end if
+                    end if
                 end if
             end if
         else if (msg = invalid) then
@@ -560,14 +588,16 @@ Sub uitkDoMessage(message, screen)
     end while
 End Sub
 
-Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Integer
+Function VListOptionDialog( showReverse as Boolean, videoObj as Object, isReddit = false as Boolean ) as Integer
     dialog = CreateObject( "roMessageDialog" )
     port = CreateObject( "roMessagePort" )
     dialog.SetMessagePort( port )
     dialog.SetTitle( "Playback Settings" )
     dialog.SetMenuTopLeft( true )
-    updateVListDialogText( dialog, false, showReverse )
+    updateVListDialogText( dialog, false, showReverse, isReddit )
     dialog.EnableBackButton( true )
+    redditFilterId = 0
+    redditFeedId   = 0
     if ( showReverse = true ) then
         reverseId = 1
         sleepId = 2
@@ -583,11 +613,17 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
         playlistId = 4
     end if
     dialog.addButton( sleepId, "Set Sleep Timer" )
-    if ( videoObj["Description"] <> invalid AND len( videoObj["Description"] ) > 0 ) then
+    if ( videoObj <> invalid AND videoObj["Description"] <> invalid AND len( videoObj["Description"] ) > 0 ) then
         dialog.addButton( detailsId, "View Full Description" )
     end if
-    if ( firstValid( videoObj[ "HasPlaylist" ], false ) = true ) then
+    if ( videoObj <> invalid AND firstValid( videoObj[ "HasPlaylist" ], false ) = true ) then
         dialog.addButton( playlistId, "View Playlist" )
+    end if
+    if ( isReddit = true ) then
+        redditFeedId = 8
+        redditFilterId = 9
+        dialog.addButton( redditFeedId, "Reddit Feed" )
+        dialog.addButton( redditFilterId, "Reddit Filter" )
     end if
     dialog.addButton( doneId, "Done" )
     dialog.Show()
@@ -599,7 +635,7 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                 ' Handles the "Reverse Playlist Order" item
                 if ( buttonPressed = reverseId ) then
                     m.youtube.reversed_playlist = NOT( m.youtube.reversed_playlist )
-                    updateVListDialogText( dialog, true, showReverse )
+                    updateVListDialogText( dialog, true, showReverse, isReddit )
                     return 1 ' Re-open the options
                 ' This will be for the sleep timer menu
                 else if ( buttonPressed = sleepId ) then
@@ -607,7 +643,7 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                     ret = SleepTimerClicked()
                     if (ret <> 0) then
                         m.youtube.sleep_timer = ret
-                        updateVListDialogText( dialog, true, showReverse )
+                        updateVListDialogText( dialog, true, showReverse, isReddit )
                     end if
                     return 1 ' Re-open the options
                 else if ( buttonPressed = detailsId ) then
@@ -623,10 +659,28 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
                     if ( plId <> invalid ) then
                         dialog.Close()
                         m.youtube.FetchVideoList( getPlaylistURL( plId ), videoObj[ "TitleSeason" ], invalid, invalid, "Loading playlist...", true )
-                        return 0
                     else
                         print "Couldn't find playlist id for URL: " ; videoObj["URL"]
                     end if
+                    return 0
+                else if ( buttonPressed = redditFeedId ) then ' Reddit Feed
+                    dialog.Close()
+                    curSelection = m.prefs.getPrefValue( m.constants.pREDDIT_FEED )
+                    ret = RedditPrefClicked( m.prefs.RedditFeed.values, curSelection, "Reddit Feed Settings" )
+                    if ( ret <> -1 ) then
+                        m.prefs.setPrefvalue( m.constants.pREDDIT_FEED, ret )
+                        updateVListDialogText( dialog, true, showReverse, isReddit )
+                    end if
+                    return 1 ' Re-open the options
+                else if ( buttonPressed = redditFilterId ) then ' Reddit Filter
+                    dialog.Close()
+                    curSelection = m.prefs.getPrefValue( m.constants.pREDDIT_FILTER)
+                    ret = RedditPrefClicked( m.prefs.RedditFilter.values, curSelection, "Reddit Filter Settings" )
+                    if ( ret <> -1 ) then
+                        m.prefs.setPrefvalue( m.constants.pREDDIT_FILTER, ret )
+                        updateVListDialogText( dialog, true, showReverse, isReddit )
+                    end if
+                    return 1 ' Re-open the options
                 else if ( buttonPressed = doneId ) then
                     dialog.Close()
                     exit while
@@ -648,7 +702,7 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object ) as Inte
     return 0
 End Function
 
-Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseText as Boolean )
+Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseText as Boolean, isReddit as Boolean )
     reversedText = "No"
     sleepText = "Off"
     if ( m.youtube.reversed_playlist = true ) then
@@ -659,9 +713,15 @@ Sub updateVListDialogText( dialog as Object, isUpdate as Boolean, showReverseTex
     end if
     dialogText = ""
     if ( showReverseText = true ) then
-        dialogText = "Playlist Reversed: " + reversedText + chr(10)
+        dialogText = "Playlist Reversed: " + reversedText + chr( 10 )
     end if
     dialogText = dialogText + "Sleep Timer: " + sleepText
+    if ( isReddit = true ) then
+        redditFeedType = firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, m.prefs.getPrefValue( m.prefs.RedditFeed.key ) ), "Hot" )
+        redditFilterType = firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, m.prefs.getPrefValue( m.prefs.RedditFilter.key ) ), "All" )
+        dialogText = dialogText + chr( 10 ) + "Reddit Feed: " + redditFeedType + chr( 10 )
+        dialogText = dialogText + "Reddit Filter: " + redditFilterType
+    end if
     if ( isUpdate = true ) then
         dialog.UpdateText( dialogText )
     else
@@ -693,6 +753,38 @@ Function SleepTimerClicked() as Integer
                 else
                     retVal = dlgMsg.GetIndex() * 60
                 end if
+                exit while
+            else if ( dlgMsg.isScreenClosed() ) then
+                exit while
+            end if
+        else if (dlgMsg = invalid) then
+            CheckForMCast()
+        end if
+    end while
+    dialog.Close()
+    return retVal
+End Function
+
+Function RedditPrefClicked( values as Object, currentSelection as Integer, title as String ) as Integer
+    dialog = CreateObject( "roMessageDialog" )
+    port = CreateObject( "roMessagePort" )
+    dialog.SetMessagePort( port )
+    dialog.SetTitle( title )
+    dialog.SetMenuTopLeft( true )
+    dialog.EnableBackButton( true )
+    idx% = 0
+    for each item in values
+        dialog.addButton( idx%, item )
+        idx% = idx% + 1
+    next
+    dialog.SetFocusedMenuItem( currentSelection )
+    dialog.Show()
+    retVal = -1
+    while true
+        dlgMsg = wait( 2000, dialog.GetMessagePort() )
+        if ( type (dlgMsg ) = "roMessageDialogEvent" ) then
+            if ( dlgMsg.isButtonPressed() ) then
+                retVal = dlgMsg.GetIndex()
                 exit while
             else if ( dlgMsg.isScreenClosed() ) then
                 exit while
