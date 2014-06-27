@@ -451,43 +451,59 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 contentdata1 = content_callback[0]
                 contentdata2 = content_callback[1]
                 content_f = content_callback[2]
-                ' Track that a timeout is being awaited
-                awaiting_timeout = true
-                ' Mark the time that the category was selected
-                category_time.Mark()
-            else if (msg.isListItemSelected()) then
-                ' This event occurs when a video is selected with the "Ok" button
-                userdata1 = onclick_callback[0]
-                userdata2 = onclick_callback[1]
-                content_f = onclick_callback[2]
 
-                ' Reset the awaiting_timeout flag if an item is clicked
-                awaiting_timeout = false
-                category_time.Mark()
-
-                contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
-                if ( contentData <> invalid ) then
-                    ' Handles when the Back/Forward arrows are clicked
-                    if ( contentData.isContentList = true ) then
-                        contentlist = contentData.content
-                        if (contentlist.Count() <> 0) then
-                            if ( contentlist[0]["action"] <> invalid AND contentlist.Count() > 1 ) then
-                                screen.SetFocusedListItem(1)
-                            else
-                                screen.SetFocusedListItem(0)
-                            end if
-                            screen.SetContentList(contentlist)
-                            screen.Show()
-                            'screen.SetFocusedListItem(msg.GetIndex())
-                        end if
-                    else if ( contentData.vidIdx <> invalid ) then
-                        ' If the user has changed the video selection, either via Play All
-                        ' or via the left/right buttons, change the selected video to match what they
-                        ' had selected on the details screen.
-                        screen.SetFocusedListItem( contentData.vidIdx )
-                    end if
+                ' Determine if the category that has been focused is the "Load More" item, that allows loading more than 50 playlists/subscriptions
+                if ( contentdata1[category_idx]["action"] <> invalid ) then
+                    contentlist = [ contentdata1[ category_idx ] ]
+                    screen.SetContentList( contentlist )
+                    idx% = 0
+                    awaiting_timeout = false
                 else
-                    print "uitkDoCategoryMenu content function returned invalid content data!"
+                    ' Track that a timeout is being awaited
+                    awaiting_timeout = true
+                    ' Mark the time that the category was selected
+                    category_time.Mark()
+                end if
+            else if (msg.isListItemSelected()) then
+                if ( contentlist[idx%]["action"] <> invalid AND contentlist[idx%]["isMoreLink"] <> invalid ) then
+                    ' Handle the item that loads more playlists/subscriptions
+                    contentlist[idx%]["depth"] = firstValid( contentlist[idx%]["depth"], 1 ) + 1
+                    m.youtube.FetchVideoList( contentlist[idx%]["pageURL"], firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"], "Items" ) + " Page " + tostr( contentlist[idx%]["depth"] ), invalid, {isPlaylist: isPlaylist, origTitle: firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"] ), depth: contentlist[idx%]["depth"]}, "Loading more items..." )
+                    contentlist[idx%]["depth"] = contentlist[idx%]["depth"] - 1
+                else
+                    ' This event occurs when a video is selected with the "Ok" button
+                    userdata1 = onclick_callback[0]
+                    userdata2 = onclick_callback[1]
+                    content_f = onclick_callback[2]
+
+                    ' Reset the awaiting_timeout flag if an item is clicked
+                    awaiting_timeout = false
+                    category_time.Mark()
+
+                    contentData = content_f(userdata1, userdata2, contentlist, category_idx, msg.GetIndex())
+                    if ( contentData <> invalid ) then
+                        ' Handles when the Back/Forward arrows are clicked
+                        if ( contentData.isContentList = true ) then
+                            contentlist = contentData.content
+                            if (contentlist.Count() <> 0) then
+                                if ( contentlist[0]["action"] <> invalid AND contentlist.Count() > 1 ) then
+                                    screen.SetFocusedListItem(1)
+                                else
+                                    screen.SetFocusedListItem(0)
+                                end if
+                                screen.SetContentList(contentlist)
+                                screen.Show()
+                                'screen.SetFocusedListItem(msg.GetIndex())
+                            end if
+                        else if ( contentData.vidIdx <> invalid ) then
+                            ' If the user has changed the video selection, either via Play All
+                            ' or via the left/right buttons, change the selected video to match what they
+                            ' had selected on the details screen.
+                            screen.SetFocusedListItem( contentData.vidIdx )
+                        end if
+                    else
+                        print "uitkDoCategoryMenu content function returned invalid content data!"
+                    end if
                 end if
             else if (msg.isListItemFocused()) then
                 ' This event occurs when the user changes the selection of a video item

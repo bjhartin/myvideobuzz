@@ -290,10 +290,25 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
 
     ' Everything is OK, display the list
     xml = response.xml
-    if (categoryData <> invalid) then
-        categoryData.categories = m.CategoriesListFromXML(xml.entry)
-        'PrintAny(0, "categoryList:", categories)
-        m.DisplayVideoListFromVideoList([], title, xml.link, screen, categoryData)
+    if ( categoryData <> invalid ) then
+        categoryData.categories = m.CategoriesListFromXML( xml.entry )
+        if ( xml.link <> invalid ) then
+            for each link in xml.link
+                if ( link@rel = "next" ) then
+                    categoryData.categories.Push({title: "Load More",
+                        shortDescriptionLine1: "Load More Items",
+                        action: "next",
+                        pageURL: link@href,
+                        screenTitle: title,
+                        origTitle: firstValid( categoryData["origTitle"], title ),
+                        depth: firstValid( categoryData["depth"], 1 ),
+                        isMoreLink: true,
+                        HDPosterUrl:"pkg:/images/icon_next_episode.jpg",
+                        SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+                end if
+            end for
+        end if
+        m.DisplayVideoListFromVideoList( [], title, xml.link, screen, categoryData )
     else
         if ( useXMLTitle = true AND xml.Title <> invalid AND type( xml.Title ) = "roXMLList" ) then
             newTitle = xml.Title[0].GetText()
@@ -360,7 +375,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         oncontent_callback = [categoryData.categories, m,
             function(categories, youtube, set_idx, reverseSort = false)
                 'PrintAny(0, "category:", categories[set_idx])
-                if (youtube <> invalid AND categories.Count() > 0) then
+                if (youtube <> invalid AND categories.Count() > 0 AND categories[set_idx]["action"] = invalid ) then
                     additionalParams = []
                     additionalParams.push( { name: "safeSearch", value: "none" } )
                     if ( reverseSort ) then
@@ -442,18 +457,16 @@ End Sub
 '           link
 '********************************************************************
 Function CategoriesListFromXML_impl(xmlList As Object) As Object
-    'print "CategoriesListFromXML_impl init"
     categoryList  = CreateObject("roList")
     for each record in xmlList
-        ''printAny(0, "xmlList:", record)
-        category        = CreateObject("roAssociativeArray")
+        category            = {}
         if (record.GetNamedElements("yt:username").Count() > 0) then
-            category.title = record.GetNamedElements("yt:username").GetAttributes()["display"]
+            category.title  = record.GetNamedElements("yt:username").GetAttributes()["display"]
         else
-            category.title = record.GetNamedElements("title").GetText()
+            category.title  = record.GetNamedElements("title").GetText()
         end if
         if (record.GetNamedElements("yt:channelId").Count() > 0) then
-            category.link =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50&safeSearch=none"
+            category.link   =  "http://gdata.youtube.com/feeds/api/users/" + validstr(record.GetNamedElements("yt:channelId").GetText()) + "/uploads?v=2&max-results=50&safeSearch=none"
         else
             category.link   = validstr(record.content@src)
         end if

@@ -191,7 +191,7 @@ Sub youtube_about()
 
     screen.AddHeaderText("About the channel")
     screen.AddParagraph("The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions.")
-    screen.AddParagraph("Version 1.7-beta1")
+    screen.AddParagraph("Version 1.7-beta2")
     screen.AddButton(1, "Back")
     screen.Show()
 
