@@ -1381,6 +1381,10 @@ End Sub
 ' It also allows us to use the history list for the LAN Videos feature
 '********************************************************************
 Sub AddHistory_impl(video as Object)
+    if ( firstValid( video["Live"], false ) = true ) then
+        print "Not adding to history."
+        return
+    end if
     if ( islist(m.history) = true ) then
         ' If the item already exists in the list, move it to the front
         j = 0

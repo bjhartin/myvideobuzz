@@ -49,6 +49,7 @@ Sub ShowHomeScreen()
     prefs = getPrefs()
 
     menudata=[]
+    menudata.Push({ShortDescriptionLine1:"Twitch", ShortDescriptionLine2: "Browse videos from Twitch.tv", Custom: true, ViewFunc: ViewTwitch, HDPosterUrl:"pkg:/images/twitch.jpg", SDPosterUrl:"pkg:/images/twitch.jpg"})
      if (ytusername<>invalid) and (isnonemptystr(ytusername)) then
         menudata.Push({ShortDescriptionLine1:"What to Watch", FeedURL:"users/" + ytusername + "/newsubscriptionvideos?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Playlists", FeedURL:"users/" + ytusername + "/playlists?v=2&max-results=50&safeSearch=none", categoryData:{ isPlaylist: true }, ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
@@ -79,9 +80,41 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
+    'newTwitchVideo( "chainerfails" )
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub
+
+Function newTwitchVideo( channel as String ) As Object
+    result = QueryForJson( "http://api.twitch.tv/api/channels/" + channel + "/access_token?as3=t" )
+    print "Sig: " ; result.json.sig
+    print "Token: " ; result.json.token
+    'QueryForJson( "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token )'+ "&allow_source=true" )
+    meta                   = {}
+    meta["Author"]                 = channel
+    meta["TitleSeason"]            = channel + " Live"
+    meta["Title"]                  = meta["Author"]
+    meta["Actors"]                 = meta["Author"]
+    meta["FullDescription"]        = "Live Stream"
+    meta["Description"]            = "Lame"
+    meta["Categories"]             = "Live Stream"
+    meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
+    meta["ShortDescriptionLine2"]  = meta["Title"]
+    meta["SDPosterUrl"]            = getDefaultThumb( invalid, "" )
+    meta["HDPosterUrl"]            = getDefaultThumb( invalid, "" )
+    meta["Length"]                 = 0
+    meta["UserID"]                 = channel
+    meta["StreamFormat"]           = "hls"
+    meta["Live"]                   = true
+    meta["Streams"]                = []
+    meta["Source"]                 = "twitch"
+    ' Set the PlayStart sufficiently large so it starts at 'Live' position
+    meta["PlayStart"]              = 500000
+    meta["SwitchingStrategy"]      = "no-adaptation"
+    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token, bitrate: 0, quality: false, contentid: -1})
+    DisplayVideo(meta)
+    return meta
+End Function
 
 '*************************************************************
 '** Set the configurable theme attributes for the application
