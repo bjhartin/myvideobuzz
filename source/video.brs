@@ -27,8 +27,6 @@ Function InitYouTube() As Object
     end if
 
     this.CurrentPageTitle = ""
-    this.screen       = invalid
-    this.video        = invalid
 
     'API Calls
     this.ExecServerAPI = ExecServerAPI_impl
@@ -58,8 +56,6 @@ Function InitYouTube() As Object
     'Categories
     this.CategoriesListFromXML  = CategoriesListFromXML_impl
 
-    this.BuildButtons = BuildButtons_impl
-
     'Settings
     this.BrowseSettings = youtube_browse_settings
     this.About = youtube_about
@@ -78,7 +74,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "6"
+    this.HISTORY_VERSION = "7"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -107,7 +103,7 @@ Function InitYouTube() As Object
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
-    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?\.com\/(?:[^\/\n ]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*?[?&]v=)|youtu\.be\/)([^&?\/ ]{11})", "igm")
+    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})\W", "igm")
     this.gfycatIDRegex = CreateObject( "roRegex", "(?:.*gfycat\.com\/)(\w*)\W*.*", "ig" )
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
     this.regexTimestampHumanReadable = CreateObject( "roRegex", "\D+", "" )
@@ -706,78 +702,77 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
     screen = CreateObject("roSpringboardScreen")
     screen.SetMessagePort(p)
 
-    m.screen    = screen
-    m.video     = theVideo
+    activeVideo = theVideo
     screen.SetDescriptionStyle("movie")
-    if (theVideo["StarRating"] = invalid) then
-        screen.SetStaticRatingEnabled(false)
+    if ( activeVideo["StarRating"] = invalid ) then
+        screen.SetStaticRatingEnabled( false )
     end if
     vidCount = videos.Count()
     if ( vidCount > 1 ) then
-        screen.AllowNavLeft(true)
-        screen.AllowNavRight(true)
+        screen.AllowNavLeft( true )
+        screen.AllowNavRight( true )
     end if
-    screen.SetPosterStyle("rounded-rect-16x9-generic")
-    screen.SetDisplayMode("zoom-to-fill")
-    screen.SetBreadcrumbText(breadcrumb, "Video")
+    screen.SetPosterStyle( "rounded-rect-16x9-generic" )
+    screen.SetDisplayMode( "zoom-to-fill" )
+    screen.SetBreadcrumbText( breadcrumb, "Video" )
 
-    buttons = m.BuildButtons()
+    BuildButtons( activeVideo, screen )
 
-    screen.SetContent(m.video)
+    screen.SetContent( theVideo )
     screen.Show()
 
     while (true)
-        msg = wait(2000, screen.GetMessagePort())
-        if (type(msg) = "roSpringboardScreenEvent") then
-            if (msg.isScreenClosed()) then
+        msg = wait( 2000, screen.GetMessagePort() )
+        if ( type( msg ) = "roSpringboardScreenEvent" ) then
+            if ( msg.isScreenClosed() ) then
                 'print "Closing springboard screen"
                 exit while
-            else if (msg.isButtonPressed()) then
+            else if ( msg.isButtonPressed() ) then
                 'print "Button pressed: "; msg.GetIndex(); " " msg.GetData()
-                if (msg.GetIndex() = 0) then ' Play/Resume
-                    result = video_get_qualities(m.video)
-                    if (result = 0) then
-                        DisplayVideo(m.video)
-                        buttons = m.BuildButtons()
+                if ( msg.GetIndex() = 0 ) then ' Play/Resume
+                    result = video_get_qualities( activeVideo )
+                    if ( result = 0 ) then
+                        DisplayVideo( activeVideo )
+                        BuildButtons( activeVideo, screen )
                     end if
-                else if (msg.GetIndex() = 1) then ' Play All
+                else if ( msg.GetIndex() = 1 ) then ' Play All
                     for i = idx to vidCount - 1  Step +1
                         selectedVideo = videos[i]
                         isPlaylist = firstValid( selectedVideo["isPlaylist"], false )
                         if ( isPlaylist = false AND selectedVideo["action"] = invalid )
-                            result = video_get_qualities(selectedVideo)
-                            if (result = 0) then
-                                ret = DisplayVideo(selectedVideo)
-                                m.video = videos[i]
-                                buttons = m.BuildButtons()
-                                screen.SetContent( m.video )
+                            result = video_get_qualities( selectedVideo )
+                            if ( result = 0 ) then
+                                activeVideo = videos[i]
+                                ret = DisplayVideo( activeVideo )
+                                BuildButtons( activeVideo, screen )
+                                screen.SetContent( activeVideo )
                                 idx = i
-                                if (ret > 0) then
+                                if ( ret > 0 ) then
                                     Exit For
                                 end if
                             end if
                         end if
                     end for
-                else if (msg.GetIndex() = 2) then
-                    m.ShowRelatedVideos(m.video)
-                else if (msg.GetIndex() = 3) then
-                    m.BrowseUserVideos(m.video["Author"], m.video["UserID"])
-                else if (msg.GetIndex() = 4) then
-                    m.BrowseUserPlaylists(m.video["Author"], m.video["UserID"])
-                else if (msg.GetIndex() = 5) then ' Play from beginning
-                    m.video["PlayStart"] = 0
-                    result = video_get_qualities(m.video)
+                else if ( msg.GetIndex() = 2 ) then ' Show related videos
+                    m.ShowRelatedVideos( activeVideo )
+                else if ( msg.GetIndex() = 3 ) then ' Show user's videos
+                    m.BrowseUserVideos( activeVideo["Author"], activeVideo["UserID"] )
+                else if ( msg.GetIndex() = 4 ) then ' Show user's playlists
+                    m.BrowseUserPlaylists( activeVideo["Author"], activeVideo["UserID"] )
+                else if ( msg.GetIndex() = 5 ) then ' Play from beginning
+                    activeVideo["PlayStart"] = 0
+                    result = video_get_qualities( activeVideo )
                     if (result = 0) then
-                        DisplayVideo(m.video)
-                        buttons = m.BuildButtons()
+                        DisplayVideo( activeVideo )
+                        BuildButtons( activeVideo, screen )
                     end if
-                else if (msg.GetIndex() = 6) then ' Linked videos
-                    m.ExecBatchQuery( batch_request_xml( m.video["Linked"] ) )
+                else if ( msg.GetIndex() = 6 ) then ' Linked videos
+                    m.ExecBatchQuery( batch_request_xml( activeVideo["Linked"] ) )
                 else if (msg.GetIndex() = 7) then ' View playlist
-                    if ( m.video["Source"] = GetConstants().sYOUTUBE ) then
-                        m.FetchVideoList( m.video["URL"], m.video["TitleSeason"], invalid, invalid, "Loading playlist...", true)
-                    else if ( m.video["Source"] = GetConstants().sGOOGLE_DRIVE ) then
-                        getGDriveFolderContents( m.video )
+                    if ( activeVideo["Source"] = GetConstants().sYOUTUBE ) then
+                        m.FetchVideoList( activeVideo["URL"], activeVideo["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                    else if ( activeVideo["Source"] = GetConstants().sGOOGLE_DRIVE ) then
+                        getGDriveFolderContents( activeVideo )
                     end if
                 end if
             else if ( msg.isRemoteKeyPressed() ) then
@@ -793,9 +788,9 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                         ' Last video is the 'next' video link, so move the index one more to the left
                          idx = idx - 1
                     end if
-                    m.video = videos[idx]
-                    buttons = m.BuildButtons()
-                    screen.SetContent( m.video )
+                    activeVideo = videos[idx]
+                    BuildButtons( activeVideo, screen )
+                    screen.SetContent( activeVideo )
                 else if ( msg.GetIndex() = 5 AND vidCount > 1 ) then ' right arrow
                     idx = idx + 1
                     ' Check to see if the last video is an "Action" button
@@ -808,12 +803,12 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                         ' First video is the 'Back' video link, so move the index one more to the right
                          idx = idx + 1
                     end if
-                    m.video = videos[idx]
-                    buttons = m.BuildButtons()
-                    screen.SetContent( m.video )
+                    activeVideo = videos[idx]
+                    BuildButtons( activeVideo, screen )
+                    screen.SetContent( activeVideo )
                 end if
             else if ( msg.isButtonInfo() ) then
-                while ( VListOptionDialog( false, m.video ) = 1 )
+                while ( VListOptionDialog( false, activeVideo ) = 1 )
                 end while
             else
                 'print "Unknown event: "; msg.GetType(); " msg: "; msg.GetMessage()
@@ -827,39 +822,36 @@ End Function
 
 '********************************************************************
 ' Helper function to build the list of buttons on the springboard
-' @return an roAssociativeArray of the buttons
 '********************************************************************
-Function BuildButtons_impl() as Object
-    m.screen.ClearButtons()
-    buttons = {}
+Sub BuildButtons( activeVideo as Object, screen as Object )
+    screen.ClearButtons()
     resumeEnabled = false
-    isPlaylist = firstValid( m.video[ "isPlaylist" ], false )
-    videoAuthor = m.video[ "Author" ]
+    isPlaylist = firstValid( activeVideo[ "isPlaylist" ], false )
+    videoAuthor = activeVideo[ "Author" ]
     if ( isPlaylist = false ) then
-        if ( firstValid( m.video[ "Live" ], false ) = false AND firstValid( m.video[ "PlayStart" ], 0 ) > 0 ) then
+        if ( firstValid( activeVideo[ "Live" ], false ) = false AND firstValid( activeVideo[ "PlayStart" ], 0 ) > 0 ) then
             resumeEnabled = true
-            buttons[ "resume" ]         = m.screen.AddButton( 0, "Resume" )
-            buttons[ "restart" ]        = m.screen.AddButton( 5, "Play from beginning" )
+            screen.AddButton( 0, "Resume" )
+            screen.AddButton( 5, "Play from beginning" )
         else
-            buttons[ "play" ]           = m.screen.AddButton( 0, "Play")
+            screen.AddButton( 0, "Play")
         end if
-        buttons[ "play_all" ]           = m.screen.AddButton( 1, "Play All")
+        screen.AddButton( 1, "Play All")
     else
-        buttons[ "view_playlist" ]      = m.screen.AddButton( 7, "View Playlist" )
+        screen.AddButton( 7, "View Playlist" )
     end if
     if ( videoAuthor <> invalid) then
         ' Hide related videos if the Resume/Play from beginning options are enabled
-        if (not(resumeEnabled)) then
-            buttons[ "show_related" ] = m.screen.AddButton( 2, "Show Related Videos" )
+        if ( not( resumeEnabled ) ) then
+            screen.AddButton( 2, "Show Related Videos" )
         end if
-        buttons[ "more" ]         = m.screen.AddButton( 3, "More Videos By " + videoAuthor )
-        buttons[ "playlists" ]    = m.screen.AddButton( 4, "Show "+ videoAuthor + "'s playlists" )
+        screen.AddButton( 3, "More Videos By " + videoAuthor )
+        screen.AddButton( 4, "Show "+ videoAuthor + "'s playlists" )
     end if
-    if (m.video[ "Linked" ] <> invalid AND m.video[ "Linked" ].Count() > 0) then
-        buttons[ "linked" ]       = m.screen.AddButton( 6, "Linked Videos" )
+    if ( activeVideo[ "Linked" ] <> invalid AND activeVideo[ "Linked" ].Count() > 0) then
+        screen.AddButton( 6, "Linked Videos" )
     end if
-    return buttons
-End Function
+End Sub
 
 '********************************************************************
 ' The video playback screen
@@ -903,9 +895,9 @@ Function DisplayVideo(content As Object)
                         video.Close()
                         ' Set the return value so that 'Play All' won't continue if the sleep timer elapses
                         ret = 2
-                        problem = ShowDialogNoButton( "Sleep Timer Expired", "" )
+                        sleepyDialog = ShowDialogNoButton( "Sleep Timer Expired", "" )
                         sleep( 3000 )
-                        problem.Close()
+                        sleepyDialog.Close()
                         exit while
                     end if
                 end if
