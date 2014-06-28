@@ -74,7 +74,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "8"
+    this.HISTORY_VERSION = "9"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -397,22 +397,23 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
             end function]
         uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, categoryData.isPlaylist )
     else if (metadata.Count() > 0) then
-        for each link in links
-            if (type(link) = "roXMLElement") then
-                if (link@rel = "next") then
-                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
-                else if (link@rel = "previous") then
-                    metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+        if ( links <> invalid ) then
+            for each link in links
+                if (type(link) = "roXMLElement") then
+                    if (link@rel = "next") then
+                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+                    else if (link@rel = "previous") then
+                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+                    end if
+                else if (type(link) = "roAssociativeArray") then
+                    if (link.type = "next") then
+                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
+                    else if (link.type = "previous") then
+                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
+                    end if
                 end if
-            else if (type(link) = "roAssociativeArray") then
-                if (link.type = "next") then
-                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
-                else if (link.type = "previous") then
-                    metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
-                end if
-            end if
-        end for
-
+            end for
+        end if
         onselect = [1, metadata, m,
             function(video, youtube, set_idx)
                 retVal% = 0
@@ -1146,20 +1147,26 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
                             ' print "Split gave " ; tostr( splitUp.Count() ) ; " items"
                             titleRegex = CreateObject( "roRegex", "\[,," + Quote() + "(.*)" + Quote() + ",(" + Quote() + "http|,,,,)", "ig" )
                             urlRegex = CreateObject( "roRegex", "\d+," + Quote() + "(http.*edit)", "ig" )
-                            for each split in splitUp
-                                vidUrlMatch = urlRegex.Match( split )
-                                if ( vidUrlMatch.Count() > 1 ) then
-                                    titleMatch = titleRegex.Match( split )
-                                    if ( titleMatch.Count() > 1 ) then
-                                        videos.Push( NewGDriveFolderVideo( titleMatch[1], vidUrlMatch[1] ) )
-                                    else
-                                        videos.Push( NewGDriveFolderVideo( "Failed title parse", vidUrlMatch[1] ) )
-                                        print "Failed to match video title for string: " ; tostr( split )
+                            mimeTypeRegex = CreateObject( "roRegex", "\,\,\," + Quote() + "video\/.*?" + Quote() + "\,\,\,", "ig" )
+                            if ( splitUp <> invalid ) then
+                                for each split in splitUp
+                                    'print split
+                                    if ( mimeTypeRegex.isMatch( split ) ) then
+                                        vidUrlMatch = urlRegex.Match( split )
+                                        if ( vidUrlMatch.Count() > 1 ) then
+                                            titleMatch = titleRegex.Match( split )
+                                            if ( titleMatch.Count() > 1 ) then
+                                                videos.Push( NewGDriveFolderVideo( titleMatch[1], vidUrlMatch[1] ) )
+                                            else
+                                                videos.Push( NewGDriveFolderVideo( "Failed title parse", vidUrlMatch[1] ) )
+                                                print "Failed to match video title for string: " ; tostr( split )
+                                            end if
+                                        else
+                                            print "Failed to find video URL in string: " ; tostr( split )
+                                        end if
                                     end if
-                                else
-                                    print "Failed to find video URL in string: " ; tostr( split )
-                                end if
-                            next
+                                next
+                            end if
                         end if
                     end if
                     exit while
@@ -1172,6 +1179,8 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
     end if
     if ( videos.Count() > 0 ) then
         m.youtube.DisplayVideoListFromVideoList( videos, video["TitleSeason"], invalid, screen, invalid, GetRedditMetaData )
+    else
+        ShowDialog1Button( "Warning", "This folder appears to not have any compatible videos.", "Got it" )
     end if
 end sub
 

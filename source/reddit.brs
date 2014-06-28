@@ -90,7 +90,7 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                 else if ( video[set_idx]["isPlaylist"] = true ) then
                     ' printAA( video[set_idx] )
                     if ( video[set_idx]["Source"] = GetConstants().sYOUTUBE ) then
-                        youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist..." )
+                        youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist...", true )
                     else if ( video[set_idx]["Source"] = GetConstants().sGOOGLE_DRIVE ) then
                         getGDriveFolderContents( video[set_idx] )
                     end if
@@ -209,16 +209,16 @@ Function NewRedditVideoList(jsonObject As Object) As Object
     for each record in jsonObject
         domain = LCase( record.data.domain ).Trim()
         supported = false
-        if ( domain = "youtube.com" OR domain = "youtu.be" ) then
+        if ( domain = "youtube.com" OR domain = "youtu.be" OR domain = "m.youtube.com" ) then
             video = NewRedditVideo( record )
             supported = true
         else if ( domain = "docs.google.com" OR domain = "drive.google.com" ) then
             video = NewRedditVideo( record, constants.sGOOGLE_DRIVE )
             supported = true
-        else if ( domain = "gfycat.com" ) then
+        else if ( domain = "gfycat.com" OR domain.InStr( 0, ".gfycat.com" ) > 0 ) then
             video = NewRedditGfycatVideo( record )
             supported = true
-        else if ( domain = "liveleak.com" ) then
+        else if ( domain = "liveleak.com" OR domain = "m.liveleak.com" ) then
             video = NewRedditURLVideo( record, constants.sLIVELEAK )
             video["URL"] = video["URL"] + "&ajax=1"
             supported = true
