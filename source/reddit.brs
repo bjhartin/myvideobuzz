@@ -228,6 +228,7 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         end if
         if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
             videoList.Push( video )
+            video = invalid
         end if
     next
     return videoList
@@ -339,11 +340,9 @@ Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As O
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
         desc = jsonObject.data.media.oembed.description
     end if
-    if ( desc = invalid ) then
-        desc = ""
-    end if
+    desc = firstValid( desc, "" )
     video["Description"]   = htmlDecode( desc )
-    video["Linked"]        = MatchAll( yt.ytIDRegex, video["Description"] )
+    video["Linked"]        = MatchAll( yt.ytIDRegexForDesc, video["Description"] )
     video["Score"]         = jsonObject.data.score
     thumb = ""
     if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
@@ -382,9 +381,7 @@ Function NewRedditGfycatVideo(jsonObject As Object) As Object
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
         desc = jsonObject.data.media.oembed.description
     end if
-    if ( desc = invalid ) then
-        desc = ""
-    end if
+    desc = firstValid( desc, "" )
     video["Description"]   = htmlDecode( desc )
     video["Linked"]        = []
     video["Score"]         = jsonObject.data.score
@@ -421,18 +418,11 @@ Function NewRedditURLVideo(jsonObject As Object, Source as String) As Object
     if ( jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid ) then
         desc = jsonObject.data.media.oembed.description
     end if
-    if ( desc = invalid ) then
-        desc = ""
-    end if
+    desc = firstValid( desc, "" )
     video["Description"]   = htmlDecode( desc )
     video["Linked"]        = []
     video["Score"]         = jsonObject.data.score
     thumb = invalid
-    'if ( jsonObject.data.thumbnail <> invalid ) then
-    '    thumb = jsonObject.data.thumbnail
-    'else if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
-    '    thumb = jsonObject.data.media.oembed.thumbnail_url
-    'end if
     if (jsonObject.data.media <> invalid AND jsonObject.data.media.oembed <> invalid) then
         thumb = jsonObject.data.media.oembed.thumbnail_url
     else
@@ -444,7 +434,7 @@ Function NewRedditURLVideo(jsonObject As Object, Source as String) As Object
     return video
 End Function
 
-Function getDefaultThumb( currentThumb as String, source as String ) as String
+Function getDefaultThumb( currentThumb as Dynamic, source as String ) as String
     if ( currentThumb = invalid OR ( Len( currentThumb ) = 0 ) OR currentThumb = "default" OR currentThumb = "nsfw" ) then
         constants = getConstants()
         if ( Source = constants.sYOUTUBE ) then
@@ -458,7 +448,7 @@ Function getDefaultThumb( currentThumb as String, source as String ) as String
         else if ( Source = constants.sVINE ) then
             currentThumb = "pkg:/images/vine.jpg"
         else
-            currentThumb = invalid
+            currentThumb = "pkg:/images/no_thumb.jpg"
         end if
     end if
     return currentThumb
@@ -573,18 +563,21 @@ Sub ManageSubreddits_impl()
 
     history = CreateObject("roSearchHistory")
     subreddits = RegRead("subreddits", "reddit")
+    subredditArray = []
     if (subreddits <> invalid) then
         regex = CreateObject("roRegex", "\+", "") ' split on plus
-        subredditArray = regex.Split(subreddits)
+        for each subreddit in regex.Split( subreddits )
+            subredditArray.Push( subreddit )
+        next
     else
-        subredditArray = ["videos"]
+        subredditArray.Push( "videos" )
     end if
-    screen.SetSearchTerms(subredditArray)
-    screen.SetBreadcrumbText("", "Hit the * button to remove a subreddit")
-    screen.SetSearchTermHeaderText("Current Subreddits:")
-    screen.SetClearButtonText("Remove All")
-    screen.SetSearchButtonText("Add Subreddit")
-    screen.SetEmptySearchTermsText("The reddit channel will be disabled")
+    screen.SetSearchTerms( subredditArray )
+    screen.SetBreadcrumbText( "", "Hit the * button to remove a subreddit" )
+    screen.SetSearchTermHeaderText( "Current Subreddits:" )
+    screen.SetClearButtonText( "Remove All" )
+    screen.SetSearchButtonText( "Add Subreddit" )
+    screen.SetEmptySearchTermsText( "If you want to disable the reddit channel, do it from the previous screen." )
     screen.Show()
     filteredResults = []
     while (true)
@@ -603,7 +596,6 @@ Sub ManageSubreddits_impl()
                 if ( Len( newOne ) > 0 ) then
                     if ( getSubredditIndex( subredditArray, newOne ) = -1 ) then
                         subredditArray.Push( newOne )
-
                         screen.SetSearchTerms( subredditArray )
                     end if
                     ' When the user hits 'Add Subreddit' or hits ok on a subreddit on the right side, set the search text
@@ -611,6 +603,7 @@ Sub ManageSubreddits_impl()
                     screen.SetSearchText( newOne )
                 end if
             else if (msg.isCleared()) then
+                filteredResults.Clear()
                 subredditArray.Clear()
                 screen.ClearSearchTerms()
             else if ( msg.isButtonInfo() ) then

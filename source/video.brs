@@ -74,7 +74,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "7"
+    this.HISTORY_VERSION = "8"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -103,7 +103,8 @@ Function InitYouTube() As Object
 
     ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
     ' Pre-compile the YouTube video ID regex
-    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})\W", "igm")
+    this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})", "i")
+    this.ytIDRegexForDesc = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})\W", "ig")
     this.gfycatIDRegex = CreateObject( "roRegex", "(?:.*gfycat\.com\/)(\w*)\W*.*", "ig" )
     this.regexNewline = CreateObject( "roRegex", "\n", "ig" )
     this.regexTimestampHumanReadable = CreateObject( "roRegex", "\D+", "" )
@@ -564,7 +565,7 @@ End Function
 Function get_linked( xml as Object ) as Dynamic
     desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
     if (desc.Count() > 0) then
-        return MatchAll( getYoutube().ytIDRegex, desc[0].GetText() )
+        return MatchAll( getYoutube().ytIDRegexForDesc, desc[0].GetText() )
     end if
     return []
 End Function
@@ -770,7 +771,16 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                     m.ExecBatchQuery( batch_request_xml( activeVideo["Linked"] ) )
                 else if (msg.GetIndex() = 7) then ' View playlist
                     if ( activeVideo["Source"] = GetConstants().sYOUTUBE ) then
-                        m.FetchVideoList( activeVideo["URL"], activeVideo["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                        if ( firstValid( activeVideo["IsPlaylist"], false ) = true ) then
+                            m.FetchVideoList( activeVideo["URL"], activeVideo["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                        else
+                            plId = firstValid( activeVideo["PlaylistID"], invalid )
+                            if ( plId <> invalid ) then
+                                m.FetchVideoList( getPlaylistURL( plId ), activeVideo[ "TitleSeason" ], invalid, invalid, "Loading playlist...", true )
+                            else
+                                print "Couldn't find playlist id for URL: " ; activeVideo["URL"]
+                            end if
+                        end if
                     else if ( activeVideo["Source"] = GetConstants().sGOOGLE_DRIVE ) then
                         getGDriveFolderContents( activeVideo )
                     end if
@@ -828,6 +838,7 @@ Sub BuildButtons( activeVideo as Object, screen as Object )
     resumeEnabled = false
     isPlaylist = firstValid( activeVideo[ "isPlaylist" ], false )
     videoAuthor = activeVideo[ "Author" ]
+    viewPlaylistButtonAdded = false
     if ( isPlaylist = false ) then
         if ( firstValid( activeVideo[ "Live" ], false ) = false AND firstValid( activeVideo[ "PlayStart" ], 0 ) > 0 ) then
             resumeEnabled = true
@@ -839,6 +850,7 @@ Sub BuildButtons( activeVideo as Object, screen as Object )
         screen.AddButton( 1, "Play All")
     else
         screen.AddButton( 7, "View Playlist" )
+        viewPlaylistButtonAdded = true
     end if
     if ( videoAuthor <> invalid) then
         ' Hide related videos if the Resume/Play from beginning options are enabled
@@ -850,6 +862,9 @@ Sub BuildButtons( activeVideo as Object, screen as Object )
     end if
     if ( activeVideo[ "Linked" ] <> invalid AND activeVideo[ "Linked" ].Count() > 0) then
         screen.AddButton( 6, "Linked Videos" )
+    end if
+    if ( viewPlaylistButtonAdded = false AND firstValid( activeVideo[ "HasPlaylist" ], false ) = true AND screen.CountButtons() < 6 ) then
+        screen.AddButton( 7, "View Playlist" )
     end if
 End Sub
 

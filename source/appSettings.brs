@@ -191,7 +191,7 @@ Sub youtube_about()
 
     screen.AddHeaderText("About the channel")
     screen.AddParagraph("The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions.")
-    screen.AddParagraph("Version 1.7-beta2")
+    screen.AddParagraph("Version 1.7-beta4")
     screen.AddButton(1, "Back")
     screen.Show()
 
@@ -219,7 +219,7 @@ Function GetFeedXML(plurl As String) As Dynamic
         http = NewHttp(plurl)
         plrsp = http.GetToStringWithRetry()
 
-        plxml=CreateObject("roXMLElement")
+        plxml = CreateObject("roXMLElement")
         if (not(plxml.Parse(plrsp))) then
             return invalid
         end if
@@ -276,8 +276,6 @@ Function getEnumValueForType( enumType as String, index as Integer ) as Object
     return retVal
 End Function
 
-
-
 Function LoadConstants() as Object
     this = {}
     this.NO_PREFERENCE     = 0
@@ -312,7 +310,7 @@ Function LoadConstants() as Object
     this.sRED_RISING        = 2
     this.sRED_TOP           = 3
     this.sRED_CONTROVERSIAL = 4
-    
+
     ' Reddit Filter Indices
     this.sRED_HOUR          = 0
     this.sRED_TODAY         = 1
