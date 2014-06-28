@@ -20,9 +20,10 @@ When development mode is enabled on your Roku, you can install dev packages
 from the Application Installer which runs on your device at your device's IP
 address. Open up a standard web browser and visit the following URL:
 
-    http://<rokuPlayer-ip-address> (for example, http://192.168.1.6)
+    http://<rokuPlayer-ip-address> (for example, http://192.168.1.7)
 
-[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.6.1/MyVideoBuzz_v1_6_1.zip) and upload it to your Roku device.
+[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.7/MyVideoBuzz_v1_7.zip) and upload it to your Roku device.  
+**Do not unzip this file! Upload the whole file to your Roku!**
 
 Due to limitations in the sandboxing of development Roku channels, you can only
 have one development channel installed at a time.
@@ -31,8 +32,8 @@ have one development channel installed at a time.
 
 ### Alternative Installation Method - Windows users
 
-Download the whole repository [Here - Current Release: 1.6.1](https://github.com/Protuhj/myvideobuzz/archive/v1.6.1.zip)
-Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
+Download the whole repository [Here - Current Release: 1.7](https://github.com/Protuhj/myvideobuzz/archive/v1.7.zip)  
+Unzip the file and edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
 
     <Roku IP><space>rokudev:<rokupassword>
     192.168.1.56 rokudev:rokupassword
@@ -72,6 +73,7 @@ Your Roku's debug console can be accessed by telnet at port 8085:
 ## Contributing
 
 
-Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz
+Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz  
+You can also check out my Facebook page here: https://www.facebook.com/Protuhj
 
 Or Donate: <a href='https://pledgie.com/campaigns/23378'><img alt='Click here to lend your support to: VideoBuzz Development and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/23378.png?skin_name=chrome' border='0' ></a>
