@@ -50,7 +50,7 @@ Function InitYouTube() As Object
     this.FetchVideoList = FetchVideoList_impl
     this.VideoDetails = VideoDetails_impl
     this.newVideoListFromXML = newVideoListFromXML_impl
-    this.newVideoFromXML = youtube_new_video
+    this.newVideoFromXML = newVideoFromXML_impl
     this.ReturnVideoList = ReturnVideoList_impl
 
     'Categories
@@ -320,8 +320,8 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
         videos = m.newVideoListFromXML( xml.entry )
         m.DisplayVideoListFromVideoList( videos, newTitle, xml.link, screen, invalid )
     end if
-End Sub
 
+End Sub
 
 Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
     xml = m.ExecServerAPI(APIRequest, username, additionalParams)["xml"]
@@ -503,13 +503,25 @@ Function newVideoListFromXML_impl(xmlList As Object) As Object
     'print "newVideoListFromXML_impl init"
     videolist = CreateObject("roList")
     for each record in xmlList
-        video = m.newVideoFromXML(record)
-        videolist.Push(video)
+        batchStatus = record.GetNamedElements("batch:status")
+        skipItem = false
+        if ( batchStatus.Count() > 0 ) then
+            if ( batchStatus[0].HasAttribute( "code" ) ) then
+                if ( batchStatus.GetAttributes()["code"] <> "200" ) then
+                    print "Failed batch request, reason: " ; firstValid( batchStatus.GetAttributes()["reason"], "Unknown" )
+                    skipItem = true
+                end if
+            end if
+        end if
+        if ( skipItem = false ) then
+            video = m.newVideoFromXML( record )
+            videolist.Push( video )
+        end if
     next
     return videolist
 End Function
 
-Function youtube_new_video(xml As Object) As Object
+Function newVideoFromXML_impl(xml As Object) As Object
     video                   = CreateObject("roAssociativeArray")
     video["ID"]             = xml.GetNamedElements("media:group")[0].GetNamedElements("yt:videoid")[0].GetText()
     video["Author"]         = get_xml_author(xml)
