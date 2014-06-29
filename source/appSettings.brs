@@ -107,8 +107,8 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"General",
             ShortDescriptionLine2:"General Settings",
-            HDPosterUrl:"pkg:/images/Settings.jpg",
-            SDPosterUrl:"pkg:/images/Settings.jpg"
+            HDPosterUrl:"pkg:/images/General_Settings.png",
+            SDPosterUrl:"pkg:/images/General_Settings.png"
         },
         {
             ShortDescriptionLine1:"Reddit",
