@@ -93,12 +93,13 @@ Sub update()
     log.EnableType( "http.error" )
     log.EnableType( "http.connect" )
     ut = CreateObject("roUrlTransfer")
+    ut.AddHeader( "User-Agent", "curl/7.33.0" )
     ut.SetPort( port )
     'ut.SetUserAndPassword( "rokudev", "roku" )
     ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
     ut.SetCertificatesDepth( 3 )
     ut.InitClientCertificates()
-    ut.SetUrl( "https://github.com/Protuhj/myvideobuzz/releases/download/v1.7/MyVideoBuzz_v1_7.zip" )
+    ut.SetUrl( "https://github.com/Protuhj/myvideobuzz/releases/download/v1.6/MyVideoBuzz_v1_6.zip" )
     fs = CreateObject( "roFileSystem" )
     ut2 = CreateObject( "roUrlTransfer" )
     ut2.SetPort( port ) 
@@ -109,30 +110,43 @@ Sub update()
             msg = Wait( 10000, port )
             if ( type(msg) = "roUrlEvent" ) then
                 respCount = respCount + 1
-                print "Response received: " + msg.GetString()
+                ' print "Response received: " + msg.GetString()
                 
                 status = msg.GetResponseCode()
                 print "received Status: " ; tostr( status )
-                if ( respCount > 2 ) then
-                    exit while
-                end if
-                if ( status = 200 ) then
+                if ( status = 200 AND respCount < 2 ) then
                     if ( fs.Exists( "tmp:/temp.zip" ) = true ) then
                         print "File exists, size: " ; tostr( fs.Stat( "tmp:/temp.zip"  ).size )
                         ut2.SetUserAndPassword( "rokudev", "roku" )
-                        ut2.SetUrl( "http://192.168.1.5/plugin_install" )
-                       ' ut2.SetUrl( "http://192.168.1.231:80/plugin_install" )
+                       ut2.SetUrl( "http://192.168.1.4/plugin_install" )
+                       'ut2.SetUrl( "http://192.168.1.231:80/plugin_install" )
                        ' ut.AsyncGetToString()
-                        ct = "multipart/form-data; boundary=" + boundary$ + " " + boundary$
+                        ct = "multipart/form-data; boundary=" + boundary$
                         print "CT: " ; ct
                         ut2.AddHeader("Content-Type", ct )
-                        ut2.AddHeader("Content-Disposition", GetContentDisposition2( "Install", boundary$ ) )
-                        ut2.AddHeader("Content-Disposition", GetContentDisposition( "temp.zip" ) )
-                        ut2.AddHeader("Content-Type", "application/octet-stream")
-                        ret = ut2.AsyncPostFromFile( "tmp:/temp.zip" )
+                        textBytes = CreateObject( "roByteArray" )
+                        'PostString$ = boundary$ +  Chr(13) + Chr(10) + GetContentDisposition2( "Install" ) + boundary$ +  Chr(13) + Chr(10) + GetContentDisposition( "temp.zip" ) + bytes.ToBase64String()
+                        PostString$ = boundary$ +  Chr(13) + Chr(10) + GetContentDisposition2( "Install" ) + boundary$ +  Chr(13) + Chr(10) + GetContentDisposition( "temp.zip" )
+                        textBytes.FromAsciiString( PostString$ )
+                        textBytes.WriteFile( "tmp:/tempText.req" )
+                        bytes = CreateObject( "roByteArray" )
+                        boundaryBytes = CreateObject( "roByteArray" )
+                        boundaryBytes.FromAsciiString( Chr(13) + Chr(10) + boundary$ + "--" + Chr(13) + Chr(10) + Chr(13) + Chr(10) )
+                        bytes.ReadFile( "tmp:/temp.zip" )
+                        ret = bytes.AppendFile( "tmp:/tempText.req" )
+                        print "Result Append: " ; tostr( ret )
+                        ret = boundaryBytes.AppendFile( "tmp:/tempText.req" )
+                        print "Result Append 2: " ; tostr( ret )
+                        'ret = ut2.AsyncPostFromString( PostString$ )
+                        'ut2.AddHeader("Content-Disposition", GetContentDisposition2( "Install", boundary$ ) )
+                        'ut2.AddHeader("Content-Disposition", GetContentDisposition( "temp.zip" ) )
+                        'ut2.AddHeader("Content-Type", "application/octet-stream")
+                        ret = ut2.AsyncPostFromFile( "tmp:/tempText.req" )
                         'ret = ut2.AsyncPostFromString( "" )
                         print "Result: " ; tostr( ret )
                     end if
+                else
+                    exit while
                 end if
             else if ( type(msg) = "Invalid" ) then
                 print "timeout reached"
@@ -147,7 +161,8 @@ Sub update()
                 print "Unknown type: " ; type(msg)
             end if
         end while
-        print "Delete succeeded: " ; tostr( fs.Delete( "tmp:/temp.zip" ) )
+        print "Delete temp.zip succeeded: " ; tostr( fs.Delete( "tmp:/temp.zip" ) )
+        print "Delete tempText.req succeeded: " ; tostr( fs.Delete( "tmp:/tempText.req" ) )
     else
         print "File doesn't exist"
     end if
@@ -158,24 +173,18 @@ Function GetContentDisposition(file As String) As String
 
 'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
 
-    contentDisposition$ = "form-data; name="
-    contentDisposition$ = contentDisposition$ + chr(34)
-    contentDisposition$ = contentDisposition$ + "archive"
-    contentDisposition$ = contentDisposition$ + chr(34)
-    contentDisposition$ = contentDisposition$ + "; filename="
-    contentDisposition$ = contentDisposition$ + chr(34)
-    contentDisposition$ = contentDisposition$ + file
-    contentDisposition$ = contentDisposition$ + chr(34)
+    'contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "archive" + chr(34) + "; filename=" + chr(34) + file + chr(34) +  Chr(13) + Chr(10) + "Content-Transfer-Encoding: base64" + Chr(13) + Chr(10) + "Content-Type: application/octet-stream" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
+    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "archive" + chr(34) + "; filename=" + chr(34) + file + chr(34) +  Chr(13) + Chr(10) + "Content-Type: application/octet-stream" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
 
     return contentDisposition$
     
 End Function
 
-Function GetContentDisposition2(file As String, boundary as String) As String
+Function GetContentDisposition2(file As String) As String
 
 'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
 
-    contentDisposition$ = "form-data; name=" + chr(34) + "mysubmit" + chr(34) + " " + file + " " + boundary
+    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "mysubmit" + chr(34) +  Chr(13) + Chr(10) + Chr(13) + Chr(10) + file + Chr(13) + Chr(10)
 
     return contentDisposition$
     
