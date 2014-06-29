@@ -79,9 +79,107 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
-    uitkDoPosterMenu(menudata, screen, onselect)
-    sleep(25)
+    'uitkDoPosterMenu(menudata, screen, onselect)
+    update()
+    sleep(2500)
+    print "Done"
 End Sub
+
+Sub update()
+    
+    port = CreateObject( "roMessagePort" )
+    log = CreateObject( "roSystemLog" )
+    log.SetMessagePort( port )
+    log.EnableType( "http.error" )
+    log.EnableType( "http.connect" )
+    ut = CreateObject("roUrlTransfer")
+    ut.SetPort( port )
+    'ut.SetUserAndPassword( "rokudev", "roku" )
+    ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+    ut.SetCertificatesDepth( 3 )
+    ut.InitClientCertificates()
+    ut.SetUrl( "https://github.com/Protuhj/myvideobuzz/releases/download/v1.7/MyVideoBuzz_v1_7.zip" )
+    fs = CreateObject( "roFileSystem" )
+    ut2 = CreateObject( "roUrlTransfer" )
+    ut2.SetPort( port ) 
+    boundary$ = "------------------------5dc38edd8963db02"
+    if ( ut.AsyncGetToFile("tmp:/temp.zip") = true ) then
+        respCount = 0
+        while ( true )
+            msg = Wait( 10000, port )
+            if ( type(msg) = "roUrlEvent" ) then
+                respCount = respCount + 1
+                print "Response received: " + msg.GetString()
+                
+                status = msg.GetResponseCode()
+                print "received Status: " ; tostr( status )
+                if ( respCount > 2 ) then
+                    exit while
+                end if
+                if ( status = 200 ) then
+                    if ( fs.Exists( "tmp:/temp.zip" ) = true ) then
+                        print "File exists, size: " ; tostr( fs.Stat( "tmp:/temp.zip"  ).size )
+                        ut2.SetUserAndPassword( "rokudev", "roku" )
+                        ut2.SetUrl( "http://192.168.1.5/plugin_install" )
+                       ' ut2.SetUrl( "http://192.168.1.231:80/plugin_install" )
+                       ' ut.AsyncGetToString()
+                        ct = "multipart/form-data; boundary=" + boundary$ + " " + boundary$
+                        print "CT: " ; ct
+                        ut2.AddHeader("Content-Type", ct )
+                        ut2.AddHeader("Content-Disposition", GetContentDisposition2( "Install", boundary$ ) )
+                        ut2.AddHeader("Content-Disposition", GetContentDisposition( "temp.zip" ) )
+                        ut2.AddHeader("Content-Type", "application/octet-stream")
+                        ret = ut2.AsyncPostFromFile( "tmp:/temp.zip" )
+                        'ret = ut2.AsyncPostFromString( "" )
+                        print "Result: " ; tostr( ret )
+                    end if
+                end if
+            else if ( type(msg) = "Invalid" ) then
+                print "timeout reached"
+                if ( respCount = 1 ) then
+                    ut2.AsyncCancel()
+                end if
+                exit while
+            else if ( type(msg) = "roSystemLogEvent" ) then
+                print "System log event"
+                printAA( msg.GetInfo() )
+            else
+                print "Unknown type: " ; type(msg)
+            end if
+        end while
+        print "Delete succeeded: " ; tostr( fs.Delete( "tmp:/temp.zip" ) )
+    else
+        print "File doesn't exist"
+    end if
+    
+End Sub
+
+Function GetContentDisposition(file As String) As String
+
+'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
+
+    contentDisposition$ = "form-data; name="
+    contentDisposition$ = contentDisposition$ + chr(34)
+    contentDisposition$ = contentDisposition$ + "archive"
+    contentDisposition$ = contentDisposition$ + chr(34)
+    contentDisposition$ = contentDisposition$ + "; filename="
+    contentDisposition$ = contentDisposition$ + chr(34)
+    contentDisposition$ = contentDisposition$ + file
+    contentDisposition$ = contentDisposition$ + chr(34)
+
+    return contentDisposition$
+    
+End Function
+
+Function GetContentDisposition2(file As String, boundary as String) As String
+
+'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
+
+    contentDisposition$ = "form-data; name=" + chr(34) + "mysubmit" + chr(34) + " " + file + " " + boundary
+
+    return contentDisposition$
+    
+End Function
 
 '*************************************************************
 '** Set the configurable theme attributes for the application
