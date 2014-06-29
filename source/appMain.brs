@@ -80,7 +80,7 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
-    'newTwitchVideo( "chainerfails" )
+    'newTwitchVideo( "circon" )
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub
@@ -111,7 +111,7 @@ Function newTwitchVideo( channel as String ) As Object
     ' Set the PlayStart sufficiently large so it starts at 'Live' position
     meta["PlayStart"]              = 500000
     meta["SwitchingStrategy"]      = "no-adaptation"
-    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token, bitrate: 0, quality: false, contentid: -1})
+    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
     DisplayVideo(meta)
     return meta
 End Function
