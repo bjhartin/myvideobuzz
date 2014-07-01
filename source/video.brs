@@ -1453,6 +1453,19 @@ Sub AddHistory_impl(video as Object)
     end for
 End Sub
 
+Function QueryForJson( url as String ) As Object
+    http = NewHttp( url )
+    headers = { }
+    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
+    http.method = "GET"
+    rsp = http.getToStringWithTimeout( 10, headers )
+
+    returnObj = CreateObject("roAssociativeArray")
+    returnObj.json = ParseJson(rsp)
+    returnObj.status = http.status
+    return returnObj
+End Function
+
 '********************************************************************
 ' Queries YouTube for more details on a video
 ' Currently unused, but could be levied for the reddit channel.

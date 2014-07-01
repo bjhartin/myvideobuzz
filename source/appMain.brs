@@ -79,8 +79,8 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
-    'uitkDoPosterMenu(menudata, screen, onselect)
-    update()
+    uitkDoPosterMenu(menudata, screen, onselect)
+    'UpdateCheck()
     sleep(2500)
     print "Done"
 End Sub

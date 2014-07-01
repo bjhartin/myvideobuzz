@@ -121,9 +121,15 @@ Sub youtube_browse_settings()
             ShortDescriptionLine2:"About the channel",
             HDPosterUrl:"pkg:/images/About.jpg",
             SDPosterUrl:"pkg:/images/About.jpg"
+        },
+        {
+            ShortDescriptionLine1:"Check for an Update",
+            ShortDescriptionLine2:"Check GitHub for an update to the channel.",
+            HDPosterUrl:"pkg:/images/check_update.png",
+            SDPosterUrl:"pkg:/images/check_update.png"
         }
     ]
-    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "RedditSettings", "About"]
+    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "RedditSettings", "About", "UpdateCheck"]
 
     uitkDoPosterMenu( settingmenu, screen, onselect )
 End Sub
@@ -195,6 +201,30 @@ Sub youtube_about()
     screen.AddButton(1, "Back")
     screen.Show()
 
+    while (true)
+        msg = wait(2000, screen.GetMessagePort())
+
+        if (type(msg) = "roParagraphScreenEvent") then
+            return
+        else if (msg = invalid) then
+            CheckForMCast()
+        end if
+    end while
+End Sub
+
+Sub UpdateCheck()
+    port = CreateObject("roMessagePort")
+    screen = CreateObject("roParagraphScreen")
+    screen.SetMessagePort(port)
+    dialog = ShowPleaseWait( "Checking for updates..." )
+    screen.AddHeaderText("Update check")
+    screen.AddButton(1, "Back")
+    screen.Show()
+    rsp = QueryForJson( "https://api.github.com/repos/Protuhj/myvideobuzz/releases" )
+    dialog.Close()
+    if ( rsp.json <> invalid ) then
+        screen.AddParagraph( rsp.json[0].tag_name )
+    end if
     while (true)
         msg = wait(2000, screen.GetMessagePort())
 
