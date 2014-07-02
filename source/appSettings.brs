@@ -318,6 +318,9 @@ Function LoadConstants() as Object
     this.sRED_YEAR          = 3
     this.sRED_ALL           = 4
 
+    ' Success error codes
+    this.ERR_NORMAL_END     = &hFC
+    this.ERR_VALUE_RETURN   = &hE2
 
     return this
 End Function

@@ -116,9 +116,17 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
     screen.SetMessagePort( port )
     screen.SetHeader( headerText )
     if ( breadA <> invalid and breadB <> invalid ) then
-        screen.SetBreadcrumbText( breadA, breadB )
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, breadB )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     else if ( breadA <> invalid and breadB = invalid ) then
-        screen.SetBreadcrumbText( breadA, "" )
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, " + Quote() + Quote() + " )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     end if
     'screen.SetListStyle("flat-category")
     'screen.SetListDisplayMode("best-fit")
@@ -171,10 +179,18 @@ Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = in
     screen.SetMessagePort( port )
     screen.SetHeader( prefData.desc )
 
-    if (breadA <> invalid and breadB <> invalid) then
-        screen.SetBreadcrumbText( breadA, breadB )
-    else if (breadA <> invalid and breadB = invalid) then
-        screen.SetBreadcrumbText( breadA, "" )
+    if ( breadA <> invalid and breadB <> invalid ) then
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, breadB )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
+    else if ( breadA <> invalid and breadB = invalid ) then
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, " + Quote() + Quote() + " )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     end if
     if ( isint( prefData.value ) ) then
         focusedIndex% = prefData.value
