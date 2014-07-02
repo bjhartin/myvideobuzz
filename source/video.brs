@@ -969,7 +969,8 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     ut.AddHeader("Cookie", loginCookie)
     if ( isSSL = true ) then
         ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-        ut.SetCertificatesDepth( 3 )
+        ' Wrap in an eval() block to catch any potential errors.
+        eval( "ut.SetCertificatesDepth( 3 )" )
         ut.InitClientCertificates()
     end if
     ut.SetUrl(url)
@@ -1129,7 +1130,8 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
         ut.SetUrl( url )
         if ( isSSL = true ) then
             ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-            ut.SetCertificatesDepth( 3 )
+            ' Wrap in an eval() block to catch any potential errors.
+            eval( "ut.SetCertificatesDepth( 3 )" )
             ut.InitClientCertificates()
         end if
         if ( ut.AsyncGetToString() ) then
@@ -1317,7 +1319,8 @@ Function getVineMP4Url(video as Object, timeout = 0 as Integer, loginCookie = ""
         ut.AddHeader( "Cookie", loginCookie )
         if ( isSSL = true ) then
             ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-            ut.SetCertificatesDepth( 3 )
+            ' Wrap in an eval() block to catch any potential errors.
+            eval( "ut.SetCertificatesDepth( 3 )" )
             ut.InitClientCertificates()
         end if
         ut.SetUrl( url )
