@@ -115,6 +115,8 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
     screen = CreateObject( "roListScreen" )
     screen.SetMessagePort( port )
     screen.SetHeader( headerText )
+    screen.SetupBehaviorAtTopRow( "exit" )
+
     if ( breadA <> invalid and breadB <> invalid ) then
         ' Wrap this call in an eval to catch any potential firmware support issue
         ret = eval( "screen.SetBreadcrumbText( breadA, breadB )" )
@@ -128,9 +130,6 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
             screen.SetTitle( breadA )
         end if
     end if
-    'screen.SetListStyle("flat-category")
-    'screen.SetListDisplayMode("best-fit")
-    'screen.SetListDisplayMode("zoom-to-fill")
     prefs = getPrefs()
     screen.Show()
     screen.SetContent( content )
@@ -178,6 +177,7 @@ Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = in
     screen = CreateObject( "roListScreen" )
     screen.SetMessagePort( port )
     screen.SetHeader( prefData.desc )
+    screen.SetupBehaviorAtTopRow( "exit" )
 
     if ( breadA <> invalid and breadB <> invalid ) then
         ' Wrap this call in an eval to catch any potential firmware support issue
