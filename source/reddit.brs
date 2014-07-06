@@ -25,7 +25,8 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
     screen.showMessage( "Loading subreddits..." )
     ' Added for https thumbnail support.
     screen.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-    screen.SetCertificatesDepth( 3 )
+    ' Wrap in an eval() block to catch any potential errors with older firmware.
+    eval( "screen.SetCertificatesDepth( 3 )" )
     screen.InitClientCertificates()
     categories = RedditCategoryList()
     if (url = "videos") then

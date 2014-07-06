@@ -115,14 +115,21 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
     screen = CreateObject( "roListScreen" )
     screen.SetMessagePort( port )
     screen.SetHeader( headerText )
+    screen.SetupBehaviorAtTopRow( "exit" )
+
     if ( breadA <> invalid and breadB <> invalid ) then
-        screen.SetBreadcrumbText( breadA, breadB )
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, breadB )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     else if ( breadA <> invalid and breadB = invalid ) then
-        screen.SetBreadcrumbText( breadA, "" )
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, " + Quote() + Quote() + " )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     end if
-    'screen.SetListStyle("flat-category")
-    'screen.SetListDisplayMode("best-fit")
-    'screen.SetListDisplayMode("zoom-to-fill")
     prefs = getPrefs()
     screen.Show()
     screen.SetContent( content )
@@ -170,11 +177,20 @@ Function uitkEnumOptionScreen( prefData as Object, breadA = invalid, breadB = in
     screen = CreateObject( "roListScreen" )
     screen.SetMessagePort( port )
     screen.SetHeader( prefData.desc )
+    screen.SetupBehaviorAtTopRow( "exit" )
 
-    if (breadA <> invalid and breadB <> invalid) then
-        screen.SetBreadcrumbText( breadA, breadB )
-    else if (breadA <> invalid and breadB = invalid) then
-        screen.SetBreadcrumbText( breadA, "" )
+    if ( breadA <> invalid and breadB <> invalid ) then
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, breadB )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
+    else if ( breadA <> invalid and breadB = invalid ) then
+        ' Wrap this call in an eval to catch any potential firmware support issue
+        ret = eval( "screen.SetBreadcrumbText( breadA, " + Quote() + Quote() + " )" )
+        if ( ret <> m.constants.ERR_NORMAL_END AND ret <> m.constants.ERR_VALUE_RETURN ) then
+            screen.SetTitle( breadA )
+        end if
     end if
     if ( isint( prefData.value ) ) then
         focusedIndex% = prefData.value

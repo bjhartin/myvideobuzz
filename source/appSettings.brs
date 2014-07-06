@@ -107,8 +107,8 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"General",
             ShortDescriptionLine2:"General Settings",
-            HDPosterUrl:"pkg:/images/Settings.jpg",
-            SDPosterUrl:"pkg:/images/Settings.jpg"
+            HDPosterUrl:"pkg:/images/General_Settings.png",
+            SDPosterUrl:"pkg:/images/General_Settings.png"
         },
         {
             ShortDescriptionLine1:"Reddit",
@@ -197,7 +197,7 @@ Sub youtube_about()
 
     screen.AddHeaderText("About the channel")
     screen.AddParagraph("The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions.")
-    screen.AddParagraph("Version 1.7")
+    screen.AddParagraph("Version 1.7.1")
     screen.AddButton(1, "Back")
     screen.Show()
 
@@ -348,6 +348,9 @@ Function LoadConstants() as Object
     this.sRED_YEAR          = 3
     this.sRED_ALL           = 4
 
+    ' Success error codes
+    this.ERR_NORMAL_END     = &hFC
+    this.ERR_VALUE_RETURN   = &hE2
 
     return this
 End Function
