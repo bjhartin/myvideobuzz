@@ -64,6 +64,7 @@ Function InitYouTube() As Object
     this.GeneralSettings = EditGeneralSettings
     this.ManageSubreddits = ManageSubreddits_impl
     this.ClearHistory = ClearHistory_impl
+    this.UpdateCheck = UpdateCheck_impl
 
     ' History
     this.ShowHistory = ShowHistory_impl

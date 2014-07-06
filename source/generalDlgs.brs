@@ -139,8 +139,8 @@ Function ShowDialog2Buttons(title As dynamic, text As dynamic, but1 As String, b
     dialog.SetTitle(title)
     dialog.SetText(text)
     dialog.SetMenuTopLeft( true )
-    dialog.AddButton(0, but1)
-    dialog.AddButton(1, but2)
+    dialog.AddButton(1, but1)
+    dialog.AddButton(2, but2)
     dialog.Show()
 
     while (true)
