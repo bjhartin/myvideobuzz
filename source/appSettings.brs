@@ -229,6 +229,8 @@ Sub youtube_about()
                 else
                     return
                 end if
+            else
+                return
             end if
         else if (msg = invalid) then
             CheckForMCast()
