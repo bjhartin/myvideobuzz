@@ -153,12 +153,16 @@ Sub uitkPreShowListMenu( context, content as Object, headerText as String, bread
                     newData.Append( content[ index% ] )
                     newData.Append( prefData )
                     newData.Delete( "prefData" )
-                    result = uitkEnumOptionScreen( newData, newBreadA, prefData.name )
-                    if ( prefData.value <> result ) then
+                    if ( prefData.type <> "string" ) then
+                        result = uitkEnumOptionScreen( newData, newBreadA, prefData.name )
+                    else
+                        result = getKeyboardInput( "Enter the " + prefData.name, prefData.desc, prefData.value, "Save" )
+                    end if
+                    if ( result <> invalid AND prefData.value <> result ) then
                         print "Preference value changed, was: " ; tostr( prefData.value ); " is now: " ; tostr( result )
                         prefs.setPrefValue( prefData.key, result )
+                        prefData.value = result
                     end if
-                    prefData.value = result
                 end if
             else if (msg.isScreenClosed()) then
                 exit while

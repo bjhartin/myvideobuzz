@@ -64,7 +64,6 @@ Function InitYouTube() As Object
     this.GeneralSettings = EditGeneralSettings
     this.ManageSubreddits = ManageSubreddits_impl
     this.ClearHistory = ClearHistory_impl
-    this.UpdateCheck = UpdateCheck_impl
 
     ' History
     this.ShowHistory = ShowHistory_impl
@@ -1464,8 +1463,13 @@ Function QueryForJson( url as String ) As Object
     http.method = "GET"
     rsp = http.getToStringWithTimeout( 10, headers )
 
-    returnObj = CreateObject("roAssociativeArray")
-    returnObj.json = ParseJson(rsp)
+    returnObj = CreateObject( "roAssociativeArray" )
+    returnObj.json = ParseJson( rsp )
+    if ( returnObj.json = invalid ) then
+        returnObj.rsp = rsp
+    else
+        returnObj.rsp = returnObj.json
+    end if
     returnObj.status = http.status
     return returnObj
 End Function
