@@ -251,7 +251,11 @@ Sub CheckForNewRelease()
         if ( isReleaseNewer( rsp.json[0].tag_name ) ) then
             dialog.Close()
             if ( ShowDialog2Buttons( "Update Available", "A new Release is available (" + rsp.json[0].tag_name + "), would you like to update the channel now?" + Chr(10) + "The channel will automatically restart if you do.", "Not Now", "Update" ) = 2 ) then
-                status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+                if ( rsp.json[0].assets[0].browser_download_url <> invalid ) then
+                    status% = DoUpdate( rsp.json[0].assets[0].browser_download_url )
+                else
+                    status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+                end if
                 if ( status% <> 200 ) then
                     if ( status% = 401 ) then
                         if ( ShowDialog2Buttons( "Roku Password Incorrect", "The password you entered for your Roku seems to be incorrect, would you like to edit it now?", "Not Now", "Yes" ) = 2 ) then
@@ -334,7 +338,11 @@ Sub ForceLatestRelease()
     if ( rsp.json <> invalid ) then
         dialog.Close()
         if ( ShowDialog2Buttons( "Update Available", "The current Release is: " + rsp.json[0].tag_name + ", would you like to attempt to update the channel now?" + Chr(10) + "The channel will automatically restart if the channel is different.", "Not Now", "Update" ) = 2 ) then
-            status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+            if ( rsp.json[0].assets[0].browser_download_url <> invalid ) then
+                status% = DoUpdate( rsp.json[0].assets[0].browser_download_url )
+            else
+                status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+            end if
             if ( status% <> 200 ) then
                 if ( status% = 401 ) then
                     if ( ShowDialog2Buttons( "Roku Password Incorrect", "The password you entered for your Roku seems to be incorrect, would you like to edit it now?", "Not Now", "Yes" ) = 2 ) then
