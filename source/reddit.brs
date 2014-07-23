@@ -226,6 +226,9 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         else if ( domain = "vine.co" ) then
             video = NewRedditURLVideo( record, constants.sVINE )
             supported = true
+        else if ( domain = "vkontakte.com" ) then
+            video = NewRedditURLVideo( record, constants.sVKONTAKTE )
+            supported = true
         end if
         if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
             videoList.Push( video )
@@ -448,6 +451,8 @@ Function getDefaultThumb( currentThumb as Dynamic, source as String ) as String
             currentThumb = "pkg:/images/LiveLeak.jpg"
         else if ( Source = constants.sVINE ) then
             currentThumb = "pkg:/images/vine.jpg"
+        else if ( Source = constants.sVKONTAKTE ) then
+            currentThumb = "pkg:/images/vkontakte.jpg"
         else
             currentThumb = "pkg:/images/no_thumb.jpg"
         end if
@@ -530,26 +535,26 @@ Sub EditRedditSettings()
     settingmenu = [
         {
             Title: "Manage Subreddits",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             callback: "ManageSubreddits"
         },
         {
             Title: "Show on Home Screen",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_ENABLED )
         },
         {
             Title: "Reddit Feed to Display",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_FEED )
         },
         {
             Title: "Reddit Filter to Apply",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_FILTER )
         }
     ]

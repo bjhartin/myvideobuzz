@@ -123,8 +123,8 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"Reddit",
             ShortDescriptionLine2:"Settings for the reddit channel.",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg"
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg"
         },
         {
             ShortDescriptionLine1:"About",
@@ -595,6 +595,7 @@ End Function
 Function LoadConstants() as Object
     this = {}
     this.VERSION_STR       = "1.7.2"
+    this.USER_AGENT        = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
     this.NO_PREFERENCE     = 0
     this.FORCE_HIGHEST     = 1
     this.FORCE_LOWEST      = 2
@@ -621,6 +622,7 @@ Function LoadConstants() as Object
     this.sVINE              = "Vine"
     this.sGFYCAT            = "Gfycat"
     this.sLIVELEAK          = "LiveLeak"
+    this.sVKONTAKTE         = "VKontakte"
 
     ' Reddit Query Indices
     this.sRED_HOT           = 0
