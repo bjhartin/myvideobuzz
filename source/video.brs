@@ -897,6 +897,7 @@ Function DisplayVideo(content As Object)
         video.SetCertificatesDepth( 3 )
         video.InitClientCertificates()
     end if
+    video.AddHeader( "User-Agent", getConstants().USER_AGENT )
     video.SetContent(content)
     video.show()
     ret = -1
@@ -961,35 +962,14 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     else
         url = "http://www.youtube.com/get_video_info?el=detailpage&video_id=" + video["ID"]
     end if
-    htmlString = ""
+    constants = getConstants()
     port = CreateObject("roMessagePort")
-    ut = CreateObject("roUrlTransfer")
-    ut.SetPort(port)
-    ut.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0")
-    ut.AddHeader("Cookie", loginCookie)
-    if ( isSSL = true ) then
-        ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-        ' Wrap in an eval() block to catch any potential errors.
-        eval( "ut.SetCertificatesDepth( 3 )" )
-        ut.InitClientCertificates()
-    end if
-    ut.SetUrl(url)
-    if (ut.AsyncGetToString()) then
-        while (true)
-            msg = Wait(timeout, port)
-            if (type(msg) = "roUrlEvent") then
-                status = msg.GetResponseCode()
-                if (status = 200) then
-                    htmlString = msg.GetString()
-                end if
-                exit while
-            else if (type(msg) = "Invalid") then
-                ut.AsyncCancel()
-                exit while
-            end if
-        end while
-    end if
-    video["SSL"] = isSSL
+
+    http = NewHttp( url )
+    headers = { }
+    headers["User-Agent"] = constants.USER_AGENT
+    headers["Cookie"] = loginCookie
+    htmlString = http.getToStringWithTimeout(10, headers)
 
     urlEncodedRegex = CreateObject("roRegex", "url_encoded_fmt_stream_map=([^(" + Chr(34) + "|&|$)]*)", "ig")
     commaRegex = CreateObject("roRegex", "%2C", "ig")
@@ -1002,9 +982,9 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
         ampersandRegex = CreateObject( "roRegex", "\\u0026", "ig" )
         equalsRegex = CreateObject( "roRegex", "\\u003D", "ig" )
     end if
-
+    htmlString = firstValid( htmlString, "" )
     urlEncodedFmtStreamMap = urlEncodedRegex.Match( htmlString )
-    constants = getConstants()
+
     prefs = getPrefs()
     videoQualityPref = prefs.getPrefValue( constants.pVIDEO_QUALITY )
 
@@ -1036,9 +1016,14 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                     else
                         signature = ""
                     end if
-                    urlDecoded = ut.Unescape(ut.Unescape(pair.url + signature))
+                    urlDecoded = URLDecode(URLDecode(pair.url + signature))
                     itag% = strtoi( pair.itag )
                     if ( itag% <> invalid AND ( itag% = 18 OR itag% = 22 OR itag% = 37 ) ) then
+                        if ( Left( LCase( urlDecoded ), 5) = "https" ) then
+                            isSSL = true
+                        else if ( isSSL <> true )
+                            isSSL = false
+                        end if
                         'printAA( pair )
                         ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
                         if ( videoQualityPref = constants.NO_PREFERENCE ) then
@@ -1087,11 +1072,17 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                 video["HDBranded"] = hasHD
                 video["IsHD"] = hasHD
                 video["FullHD"] = fullHD
+                video["SSL"] = isSSL
             end if
         else
             hlsUrl = CreateObject("roRegex", "hlsvp=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
             if (hlsUrl.Count() > 1) then
-                urlDecoded = ut.Unescape(ut.Unescape(ut.Unescape(hlsUrl[1])))
+                urlDecoded = URLDecode(URLDecode(URLDecode(hlsUrl[1])))
+                if ( Left( LCase( urlDecoded ), 5) = "https" ) then
+                    isSSL = true
+                else if ( isSSL <> true )
+                    isSSL = false
+                end if
                 'print "Found hlsVP: " ; urlDecoded
                 video["Streams"].Clear()
                 video["Live"]              = true
@@ -1101,6 +1092,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                 'video["SwitchingStrategy"] = "unaligned-segments"
                 video["SwitchingStrategy"] = "full-adaptation"
                 video["Streams"].Push({url: urlDecoded, bitrate: 0, quality: false, contentid: -1})
+                video["SSL"] = isSSL
             end if
 
         end if
