@@ -623,6 +623,7 @@ Function LoadConstants() as Object
     this.sGFYCAT            = "Gfycat"
     this.sLIVELEAK          = "LiveLeak"
     this.sVKONTAKTE         = "VKontakte"
+    this.sVIDZI             = "Vidzi.tv"
 
     ' Reddit Query Indices
     this.sRED_HOT           = 0

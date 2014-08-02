@@ -229,6 +229,9 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         else if ( domain = "vkontakte.com" ) then
             video = NewRedditURLVideo( record, constants.sVKONTAKTE )
             supported = true
+        else if ( domain = "vidzi.tv" ) then
+            video = NewRedditURLVideo( record, constants.sVIDZI )
+            supported = true
         end if
         if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
             videoList.Push( video )
@@ -453,6 +456,8 @@ Function getDefaultThumb( currentThumb as Dynamic, source as String ) as String
             currentThumb = "pkg:/images/vine.jpg"
         else if ( Source = constants.sVKONTAKTE ) then
             currentThumb = "pkg:/images/vkontakte.jpg"
+        else if ( Source = constants.sVIDZI ) then
+            currentThumb = "pkg:/images/Vidzi.jpg"
         else
             currentThumb = "pkg:/images/no_thumb.jpg"
         end if

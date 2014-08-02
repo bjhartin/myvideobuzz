@@ -1294,7 +1294,28 @@ Function getLiveleakMP4Url(video as Object, timeout = 0 as Integer, loginCookie 
     return video["Streams"]
 end function
 
-Function getVKontakteMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
+Function getVidziMP4Url(video as Object) as Object
+    video["Streams"].Clear()
+
+    if ( video["URL"] <> invalid ) then
+        vidziMP4UrlRegex = CreateObject( "roRegex", "file:.*?" + Quote() + "(.*?\.mp4)" + Quote(), "i" )
+        url = video["URL"]
+        http = NewHttp( url )
+        headers = { }
+        headers["User-Agent"] = getConstants().USER_AGENT
+        htmlString = firstValid( http.getToStringWithTimeout(10, headers), "" )
+        matches = vidziMP4UrlRegex.Match( htmlString )
+        if ( matches <> invalid AND matches.Count() > 1 ) then
+            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 0, quality: false, contentid: url} )
+            video["Live"]          = false
+            video["StreamFormat"]  = "mp4"
+        end if
+    end if
+
+    return video["Streams"]
+end function
+
+Function getVKontakteMP4Url(video as Object, timeout = 0 as Integer ) as Object
     video["Streams"].Clear()
 
     if ( video["URL"] <> invalid ) then
@@ -1307,7 +1328,6 @@ Function getVKontakteMP4Url(video as Object, timeout = 0 as Integer, loginCookie
         ut = CreateObject( "roUrlTransfer" )
         ut.SetPort( port )
         ut.AddHeader( "User-Agent", getConstants().USER_AGENT )
-        ut.AddHeader( "Cookie", loginCookie )
         ut.SetUrl( url )
         if ( ut.AsyncGetToString() ) then
             while ( true )
@@ -1422,6 +1442,8 @@ Function video_get_qualities(video as Object) As Integer
             getVineMP4Url( video )
         else if ( source = constants.sVKONTAKTE ) then
             getVKontakteMP4Url( video )
+        else if ( source = constants.sVIDZI ) then
+            getVidziMP4Url( video )
         end if
 
         if ( video["Streams"].Count() > 0 ) then
