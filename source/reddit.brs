@@ -226,7 +226,7 @@ Function NewRedditVideoList(jsonObject As Object) As Object
         else if ( domain = "vine.co" ) then
             video = NewRedditURLVideo( record, constants.sVINE )
             supported = true
-        else if ( domain = "vkontakte.com" ) then
+        else if ( domain = "vkontakte.com" or domain = "vk.com" ) then
             video = NewRedditURLVideo( record, constants.sVKONTAKTE )
             supported = true
         else if ( domain = "vidzi.tv" ) then
