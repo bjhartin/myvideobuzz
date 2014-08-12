@@ -74,7 +74,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "9"
+    this.HISTORY_VERSION = "10"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -101,7 +101,7 @@ Function InitYouTube() As Object
     this.mp_socket  = invalid
     this.udp_created = 0
 
-    ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
+    ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url (with modifications)
     ' Pre-compile the YouTube video ID regex
     this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})", "i")
     this.ytIDRegexForDesc = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})\W", "ig")

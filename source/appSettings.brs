@@ -204,10 +204,18 @@ Sub youtube_about()
     port = CreateObject("roMessagePort")
     screen = CreateObject("roParagraphScreen")
     screen.SetMessagePort(port)
+    versionStr = getConstants().VERSION_STR
+
+    manifestText = ReadAsciiFile( "pkg:/manifest" )
+    manifestData = ParseManifestString( manifestText )
+    if ( manifestData <> invalid ) then
+        versionStr = manifestData.versionStr
+    end if
 
     screen.AddHeaderText( "About the channel" )
     screen.AddParagraph( "The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions." )
-    screen.AddParagraph( "Version " + getConstants().VERSION_STR )
+    screen.AddParagraph( "Version " + versionStr )
+    screen.AddParagraph( "Built: " + manifestData.builtStr )
     screen.AddButton( 1, "Check for New Release" )
     screen.AddButton( 2, "Check for Development Update" )
     screen.AddButton( 3, "Force Update To Latest Release" )
@@ -364,9 +372,11 @@ Function ParseManifestString( manifestText as String ) as Dynamic
     majorRegex = CreateObject( "roRegex", "major_version=(\d*)", "i" )
     minorRegex = CreateObject( "roRegex", "minor_version=(\d*)", "i" )
     buildRegex = CreateObject( "roRegex", "build_version=(\d+)", "i" )
+    builtDateRegex = CreateObject( "roRegex", "build_date=(.*?)$", "i" )
     majorMatch = majorRegex.Match( manifestText )
     minorMatch = minorRegex.Match( manifestText )
     buildMatch = buildRegex.Match( manifestText )
+    builtMatch = builtDateRegex.Match( manifestText )
 
     if ( majorMatch.Count() < 2 OR minorMatch.Count() < 2 OR buildMatch.Count() < 2 ) then
         return invalid
@@ -375,6 +385,11 @@ Function ParseManifestString( manifestText as String ) as Dynamic
     retVal.majorVer = strtoi( majorMatch[1] )
     retVal.minorVer = strtoi( minorMatch[1] )
     retVal.buildNum = strtoi( buildMatch[1] )
+    if ( builtMatch.Count() > 1 ) then
+        retVal.builtStr = builtMatch[1]
+    else
+        retVal.builtStr = "Built date missing from manifest!"
+    end if
     retVal.versionStr = majorMatch[1] + "." + minorMatch[1] + "." + buildMatch[1]
     return retVal
 End Function
