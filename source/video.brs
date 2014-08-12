@@ -74,7 +74,7 @@ Function InitYouTube() As Object
 
     ' Version of the history.
     ' Update when a new site is added, or when information stored in the registry might change
-    this.HISTORY_VERSION = "8"
+    this.HISTORY_VERSION = "10"
     regHistVer = RegRead( "HistoryVersion", "Settings" )
     if ( regHistVer = invalid OR regHistVer <> this.HISTORY_VERSION ) then
         print( "History version mismatch (clearing history), found: " + tostr( regHistVer ) + ", expected: " + this.HISTORY_VERSION )
@@ -101,7 +101,7 @@ Function InitYouTube() As Object
     this.mp_socket  = invalid
     this.udp_created = 0
 
-    ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url
+    ' Regex found on the internets here: http://stackoverflow.com/questions/3452546/javascript-regex-how-to-get-youtube-video-id-from-url (with modifications)
     ' Pre-compile the YouTube video ID regex
     this.ytIDRegex = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})", "i")
     this.ytIDRegexForDesc = CreateObject("roRegex", "(?:youtube(?:-nocookie)?.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu.be\/)([a-zA-Z0-9_-]{11})\W", "ig")
@@ -397,22 +397,23 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
             end function]
         uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, categoryData.isPlaylist )
     else if (metadata.Count() > 0) then
-        for each link in links
-            if (type(link) = "roXMLElement") then
-                if (link@rel = "next") then
-                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
-                else if (link@rel = "previous") then
-                    metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+        if ( links <> invalid ) then
+            for each link in links
+                if (type(link) = "roXMLElement") then
+                    if (link@rel = "next") then
+                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+                    else if (link@rel = "previous") then
+                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+                    end if
+                else if (type(link) = "roAssociativeArray") then
+                    if (link.type = "next") then
+                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
+                    else if (link.type = "previous") then
+                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
+                    end if
                 end if
-            else if (type(link) = "roAssociativeArray") then
-                if (link.type = "next") then
-                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
-                else if (link.type = "previous") then
-                    metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
-                end if
-            end if
-        end for
-
+            end for
+        end if
         onselect = [1, metadata, m,
             function(video, youtube, set_idx)
                 retVal% = 0
@@ -896,6 +897,7 @@ Function DisplayVideo(content As Object)
         video.SetCertificatesDepth( 3 )
         video.InitClientCertificates()
     end if
+    video.AddHeader( "User-Agent", getConstants().USER_AGENT )
     video.SetContent(content)
     video.show()
     ret = -1
@@ -960,34 +962,14 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     else
         url = "http://www.youtube.com/get_video_info?el=detailpage&video_id=" + video["ID"]
     end if
-    htmlString = ""
+    constants = getConstants()
     port = CreateObject("roMessagePort")
-    ut = CreateObject("roUrlTransfer")
-    ut.SetPort(port)
-    ut.AddHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0")
-    ut.AddHeader("Cookie", loginCookie)
-    if ( isSSL = true ) then
-        ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-        ut.SetCertificatesDepth( 3 )
-        ut.InitClientCertificates()
-    end if
-    ut.SetUrl(url)
-    if (ut.AsyncGetToString()) then
-        while (true)
-            msg = Wait(timeout, port)
-            if (type(msg) = "roUrlEvent") then
-                status = msg.GetResponseCode()
-                if (status = 200) then
-                    htmlString = msg.GetString()
-                end if
-                exit while
-            else if (type(msg) = "Invalid") then
-                ut.AsyncCancel()
-                exit while
-            end if
-        end while
-    end if
-    video["SSL"] = isSSL
+
+    http = NewHttp( url )
+    headers = { }
+    headers["User-Agent"] = constants.USER_AGENT
+    headers["Cookie"] = loginCookie
+    htmlString = http.getToStringWithTimeout(10, headers)
 
     urlEncodedRegex = CreateObject("roRegex", "url_encoded_fmt_stream_map=([^(" + Chr(34) + "|&|$)]*)", "ig")
     commaRegex = CreateObject("roRegex", "%2C", "ig")
@@ -1000,9 +982,9 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
         ampersandRegex = CreateObject( "roRegex", "\\u0026", "ig" )
         equalsRegex = CreateObject( "roRegex", "\\u003D", "ig" )
     end if
-
+    htmlString = firstValid( htmlString, "" )
     urlEncodedFmtStreamMap = urlEncodedRegex.Match( htmlString )
-    constants = getConstants()
+
     prefs = getPrefs()
     videoQualityPref = prefs.getPrefValue( constants.pVIDEO_QUALITY )
 
@@ -1034,9 +1016,14 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                     else
                         signature = ""
                     end if
-                    urlDecoded = ut.Unescape(ut.Unescape(pair.url + signature))
+                    urlDecoded = URLDecode(URLDecode(pair.url + signature))
                     itag% = strtoi( pair.itag )
                     if ( itag% <> invalid AND ( itag% = 18 OR itag% = 22 OR itag% = 37 ) ) then
+                        if ( Left( LCase( urlDecoded ), 5) = "https" ) then
+                            isSSL = true
+                        else if ( isSSL <> true )
+                            isSSL = false
+                        end if
                         'printAA( pair )
                         ' Determined from here: http://en.wikipedia.org/wiki/YouTube#Quality_and_codecs
                         if ( videoQualityPref = constants.NO_PREFERENCE ) then
@@ -1085,11 +1072,17 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                 video["HDBranded"] = hasHD
                 video["IsHD"] = hasHD
                 video["FullHD"] = fullHD
+                video["SSL"] = isSSL
             end if
         else
             hlsUrl = CreateObject("roRegex", "hlsvp=([^(" + Chr(34) + "|&|$)]*)", "").Match(htmlString)
             if (hlsUrl.Count() > 1) then
-                urlDecoded = ut.Unescape(ut.Unescape(ut.Unescape(hlsUrl[1])))
+                urlDecoded = URLDecode(URLDecode(URLDecode(hlsUrl[1])))
+                if ( Left( LCase( urlDecoded ), 5) = "https" ) then
+                    isSSL = true
+                else if ( isSSL <> true )
+                    isSSL = false
+                end if
                 'print "Found hlsVP: " ; urlDecoded
                 video["Streams"].Clear()
                 video["Live"]              = true
@@ -1099,6 +1092,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
                 'video["SwitchingStrategy"] = "unaligned-segments"
                 video["SwitchingStrategy"] = "full-adaptation"
                 video["Streams"].Push({url: urlDecoded, bitrate: 0, quality: false, contentid: -1})
+                video["SSL"] = isSSL
             end if
 
         end if
@@ -1128,7 +1122,8 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
         ut.SetUrl( url )
         if ( isSSL = true ) then
             ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-            ut.SetCertificatesDepth( 3 )
+            ' Wrap in an eval() block to catch any potential errors.
+            eval( "ut.SetCertificatesDepth( 3 )" )
             ut.InitClientCertificates()
         end if
         if ( ut.AsyncGetToString() ) then
@@ -1146,20 +1141,26 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
                             ' print "Split gave " ; tostr( splitUp.Count() ) ; " items"
                             titleRegex = CreateObject( "roRegex", "\[,," + Quote() + "(.*)" + Quote() + ",(" + Quote() + "http|,,,,)", "ig" )
                             urlRegex = CreateObject( "roRegex", "\d+," + Quote() + "(http.*edit)", "ig" )
-                            for each split in splitUp
-                                vidUrlMatch = urlRegex.Match( split )
-                                if ( vidUrlMatch.Count() > 1 ) then
-                                    titleMatch = titleRegex.Match( split )
-                                    if ( titleMatch.Count() > 1 ) then
-                                        videos.Push( NewGDriveFolderVideo( titleMatch[1], vidUrlMatch[1] ) )
-                                    else
-                                        videos.Push( NewGDriveFolderVideo( "Failed title parse", vidUrlMatch[1] ) )
-                                        print "Failed to match video title for string: " ; tostr( split )
+                            mimeTypeRegex = CreateObject( "roRegex", "\,\,\," + Quote() + "video\/.*?" + Quote() + "\,\,\,", "ig" )
+                            if ( splitUp <> invalid ) then
+                                for each split in splitUp
+                                    'print split
+                                    if ( mimeTypeRegex.isMatch( split ) ) then
+                                        vidUrlMatch = urlRegex.Match( split )
+                                        if ( vidUrlMatch.Count() > 1 ) then
+                                            titleMatch = titleRegex.Match( split )
+                                            if ( titleMatch.Count() > 1 ) then
+                                                videos.Push( NewGDriveFolderVideo( titleMatch[1], vidUrlMatch[1] ) )
+                                            else
+                                                videos.Push( NewGDriveFolderVideo( "Failed title parse", vidUrlMatch[1] ) )
+                                                print "Failed to match video title for string: " ; tostr( split )
+                                            end if
+                                        else
+                                            print "Failed to find video URL in string: " ; tostr( split )
+                                        end if
                                     end if
-                                else
-                                    print "Failed to find video URL in string: " ; tostr( split )
-                                end if
-                            next
+                                next
+                            end if
                         end if
                     end if
                     exit while
@@ -1172,6 +1173,8 @@ Sub getGDriveFolderContents(video as Object, timeout = 0 as Integer, loginCookie
     end if
     if ( videos.Count() > 0 ) then
         m.youtube.DisplayVideoListFromVideoList( videos, video["TitleSeason"], invalid, screen, invalid, GetRedditMetaData )
+    else
+        ShowDialog1Button( "Warning", "This folder appears to not have any compatible videos.", "Got it" )
     end if
 end sub
 
@@ -1291,6 +1294,89 @@ Function getLiveleakMP4Url(video as Object, timeout = 0 as Integer, loginCookie 
     return video["Streams"]
 end function
 
+Function getVidziMP4Url(video as Object) as Object
+    video["Streams"].Clear()
+
+    if ( video["URL"] <> invalid ) then
+        vidziMP4UrlRegex = CreateObject( "roRegex", "file:.*?" + Quote() + "(.*?\.mp4)" + Quote(), "i" )
+        url = video["URL"]
+        http = NewHttp( url )
+        headers = { }
+        headers["User-Agent"] = getConstants().USER_AGENT
+        htmlString = firstValid( http.getToStringWithTimeout(10, headers), "" )
+        matches = vidziMP4UrlRegex.Match( htmlString )
+        if ( matches <> invalid AND matches.Count() > 1 ) then
+            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 0, quality: false, contentid: url} )
+            video["Live"]          = false
+            video["StreamFormat"]  = "mp4"
+        end if
+    end if
+
+    return video["Streams"]
+end function
+
+Function getVKontakteMP4Url(video as Object, timeout = 0 as Integer ) as Object
+    video["Streams"].Clear()
+
+    if ( video["URL"] <> invalid ) then
+        vk240pUrlRegex = CreateObject( "roRegex", "url240=(.*?)&amp;", "i" )
+        vk360pUrlRegex = CreateObject( "roRegex", "url360=(.*?)&amp;", "i" )
+        vk480pUrlRegex = CreateObject( "roRegex", "url480=(.*?)&amp;", "i" )
+        vk720pUrlRegex = CreateObject( "roRegex", "url720=(.*?)&amp;", "i" )
+        url = video["URL"]
+        port = CreateObject( "roMessagePort" )
+        ut = CreateObject( "roUrlTransfer" )
+        ut.SetPort( port )
+        ut.AddHeader( "User-Agent", getConstants().USER_AGENT )
+        ut.SetUrl( url )
+        if ( ut.AsyncGetToString() ) then
+            while ( true )
+                msg = Wait( timeout, port )
+                if ( type(msg) = "roUrlEvent" ) then
+                    status = msg.GetResponseCode()
+                    if ( status = 200 ) then
+                        responseString = msg.GetString()
+                        matches = vk240pUrlRegex.Match( responseString )
+                        if ( matches <> invalid AND matches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 400, quality: false, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                        end if
+
+                        matches = vk360pUrlRegex.Match( responseString )
+                        if ( matches <> invalid AND matches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 750, quality: false, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                        end if
+
+                        matches = vk480pUrlRegex.Match( responseString )
+                        if ( matches <> invalid AND matches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( matches[1] ) ), bitrate: 1000, quality: false, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                        end if
+
+                        hdmatches = vk720pUrlRegex.Match( responseString )
+                        if ( hdmatches <> invalid AND hdmatches.Count() > 1 ) then
+                            video["Streams"].Push( {url: URLDecode( htmlDecode( hdmatches[1] ) ), bitrate: 2500, quality: true, contentid: video["ID"]} )
+                            video["Live"]          = false
+                            video["StreamFormat"]  = "mp4"
+                            video["HDBranded"] = true
+                            video["IsHD"] = true
+                        end if
+                    end if
+                    exit while
+                else if ( type(msg) = "Invalid" ) then
+                    ut.AsyncCancel()
+                    exit while
+                end if
+            end while
+        end if
+    end if
+    return video["Streams"]
+end function
+
 Function getVineMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
     video["Streams"].Clear()
 
@@ -1308,7 +1394,8 @@ Function getVineMP4Url(video as Object, timeout = 0 as Integer, loginCookie = ""
         ut.AddHeader( "Cookie", loginCookie )
         if ( isSSL = true ) then
             ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-            ut.SetCertificatesDepth( 3 )
+            ' Wrap in an eval() block to catch any potential errors.
+            eval( "ut.SetCertificatesDepth( 3 )" )
             ut.InitClientCertificates()
         end if
         ut.SetUrl( url )
@@ -1353,6 +1440,10 @@ Function video_get_qualities(video as Object) As Integer
             getLiveleakMP4Url( video )
         else if ( source = constants.sVINE ) then
             getVineMP4Url( video )
+        else if ( source = constants.sVKONTAKTE ) then
+            getVKontakteMP4Url( video )
+        else if ( source = constants.sVIDZI ) then
+            getVidziMP4Url( video )
         end if
 
         if ( video["Streams"].Count() > 0 ) then
@@ -1447,6 +1538,24 @@ Sub AddHistory_impl(video as Object)
         vid["FullDescription"] = fullDescs[vid["ID"]]
     end for
 End Sub
+
+Function QueryForJson( url as String ) As Object
+    http = NewHttp( url )
+    headers = { }
+    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
+    http.method = "GET"
+    rsp = http.getToStringWithTimeout( 10, headers )
+
+    returnObj = CreateObject( "roAssociativeArray" )
+    returnObj.json = ParseJson( rsp )
+    if ( returnObj.json = invalid ) then
+        returnObj.rsp = rsp
+    else
+        returnObj.rsp = returnObj.json
+    end if
+    returnObj.status = http.status
+    return returnObj
+End Function
 
 '********************************************************************
 ' Queries YouTube for more details on a video

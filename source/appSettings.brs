@@ -11,11 +11,15 @@ Function createPref( prefData as Object ) as Object
     base = {}
     base.name       = prefData.prefName
     base.key        = prefData.prefKey
-    base.value      = strtoi( firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) ) )
     base.default    = prefData.prefDefault
     base.type       = prefData.prefType
     base.desc       = prefData.prefDesc
-    base.values     = getEnumValuesForType( prefData.prefType, prefData.enumType )
+    if ( prefData.prefType = "bool" OR prefData.prefType = "enum" ) then
+        base.value      = strtoi( firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) ) )
+        base.values     = getEnumValuesForType( prefData.prefType, prefData.enumType )
+    else
+        base.value      = firstValid( loadPrefValue( prefData.prefKey ), tostr( prefData.prefDefault ) )
+    end if
     return base
 End Function
 
@@ -28,7 +32,13 @@ Function LoadPreferences() as Object
         prefKey: consts.pVIDEO_QUALITY,
         prefType: "enum",
         enumType: consts.eVID_QUALITY
-    })
+        })
+    prefs.RokuPassword = createPref( { prefName: "Roku Password",
+        prefDesc: "Password used to auto-update the channel.",
+        prefDefault: "",
+        prefKey: consts.pROKU_PASSWORD,
+        prefType: "string"
+        })
     prefs.RedditEnabled = createPref( { prefName: "Enable Reddit",
         prefDesc: "Does the reddit icon appear on the home screen?",
         prefDefault: consts.ENABLED_VALUE,
@@ -62,7 +72,7 @@ End Function
 Function getPrefValue_impl( key as String ) as Dynamic
     retVal = invalid
     if ( m[key] <> invalid ) then
-        retVal = m[key].value
+        retVal = firstValid( m[key].value, m[key].default )
     end if
     return retVal
 End Function
@@ -107,14 +117,14 @@ Sub youtube_browse_settings()
         {
             ShortDescriptionLine1:"General",
             ShortDescriptionLine2:"General Settings",
-            HDPosterUrl:"pkg:/images/Settings.jpg",
-            SDPosterUrl:"pkg:/images/Settings.jpg"
+            HDPosterUrl:"pkg:/images/General_Settings.png",
+            SDPosterUrl:"pkg:/images/General_Settings.png"
         },
         {
             ShortDescriptionLine1:"Reddit",
             ShortDescriptionLine2:"Settings for the reddit channel.",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg"
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg"
         },
         {
             ShortDescriptionLine1:"About",
@@ -135,6 +145,12 @@ Sub EditGeneralSettings()
             HDPosterUrl:"pkg:/images/Settings.jpg",
             SDPosterUrl:"pkg:/images/Settings.jpg",
             prefData: getPrefs().getPrefData( getConstants().pVIDEO_QUALITY )
+        },
+        {
+            Title: "Roku Development Password",
+            HDPosterUrl:"pkg:/images/Settings.jpg",
+            SDPosterUrl:"pkg:/images/Settings.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pROKU_PASSWORD )
         }
     ]
 
@@ -188,23 +204,211 @@ Sub youtube_about()
     port = CreateObject("roMessagePort")
     screen = CreateObject("roParagraphScreen")
     screen.SetMessagePort(port)
+    versionStr = getConstants().VERSION_STR
 
-    screen.AddHeaderText("About the channel")
-    screen.AddParagraph("The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions.")
-    screen.AddParagraph("Version 1.7-beta5")
-    screen.AddButton(1, "Back")
+    manifestText = ReadAsciiFile( "pkg:/manifest" )
+    manifestData = ParseManifestString( manifestText )
+    if ( manifestData <> invalid ) then
+        versionStr = manifestData.versionStr
+    end if
+
+    screen.AddHeaderText( "About the channel" )
+    screen.AddParagraph( "The channel is an open source channel developed by Protuhj, based on the original channel by Utmost Solutions, which was based on the Roku YouTube Channel by Jeston Tigchon. Source code of the channel can be found at https://github.com/Protuhj/myvideobuzz.  This channel is not affiliated with Google, YouTube, Reddit, or Utmost Solutions." )
+    screen.AddParagraph( "Version " + versionStr )
+    screen.AddParagraph( "Built: " + manifestData.builtStr )
+    screen.AddButton( 1, "Check for New Release" )
+    screen.AddButton( 2, "Check for Development Update" )
+    screen.AddButton( 3, "Force Update To Latest Release" )
+    screen.AddButton( 4, "Back" )
     screen.Show()
 
     while (true)
         msg = wait(2000, screen.GetMessagePort())
 
         if (type(msg) = "roParagraphScreenEvent") then
-            return
+            if ( msg.isButtonPressed() = true ) then
+                button% = msg.GetIndex()
+                if ( button% = 1 ) then ' Check for a new Release
+                    CheckForNewRelease()
+                else if ( button% = 2 ) then ' Check for a new Development release
+                    CheckForNewMaster()
+                else if ( button% = 3 ) then ' Force Update To Latest
+                    ForceLatestRelease()
+                else
+                    return
+                end if
+            else
+                return
+            end if
         else if (msg = invalid) then
             CheckForMCast()
         end if
     end while
 End Sub
+
+Sub CheckForNewRelease()
+    if ( getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) = "" ) then
+        if ( ShowDialog2Buttons( "Roku Password Not Set", "You need to enter the password you entered for your Roku when you enabled development mode, would you like to do it now?", "Not Now", "Yes" ) = 2 ) then
+            getYoutube().GeneralSettings()
+        end if
+        return
+    end if
+    dialog = ShowPleaseWait( "Checking for a new Release..." )
+    rsp = QueryForJson( "https://api.github.com/repos/Protuhj/myvideobuzz/releases" )
+    if ( rsp.json <> invalid ) then
+        if ( isReleaseNewer( rsp.json[0].tag_name ) ) then
+            dialog.Close()
+            if ( ShowDialog2Buttons( "Update Available", "A new Release is available (" + rsp.json[0].tag_name + "), would you like to update the channel now?" + Chr(10) + "The channel will automatically restart if you do.", "Not Now", "Update" ) = 2 ) then
+                if ( rsp.json[0].assets[0].browser_download_url <> invalid ) then
+                    status% = DoUpdate( rsp.json[0].assets[0].browser_download_url )
+                else
+                    status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+                end if
+                if ( status% <> 200 ) then
+                    if ( status% = 401 ) then
+                        if ( ShowDialog2Buttons( "Roku Password Incorrect", "The password you entered for your Roku seems to be incorrect, would you like to edit it now?", "Not Now", "Yes" ) = 2 ) then
+                            getYoutube().GeneralSettings()
+                        end if
+                    else
+                        ShowDialog1Button( "Error", "Unexpected error while trying to update the channel, code: " + tostr( status% ), "Ok" )
+                    end if
+                    return
+                end if
+            end if
+        else
+            dialog.Close()
+            ShowDialog1Button( "Info", "No New Releases Available", "Ok" )
+        end if
+    else
+        dialog.Close()
+        ShowDialog1Button( "Error", "Failed to query GitHub to check for a new Release, code: " + tostr( rsp.status ), "Ok" )
+    end if
+End Sub
+
+Sub CheckForNewMaster()
+    if ( getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) = "" ) then
+        if ( ShowDialog2Buttons( "Roku Password Not Set", "You need to enter the password you entered for your Roku when you enabled development mode, would you like to do it now?", "Not Now", "Yes" ) = 2 ) then
+            getYoutube().GeneralSettings()
+        end if
+        return
+    end if
+    dialog = ShowPleaseWait( "Checking for a new development update..." )
+    manifestText = ReadAsciiFile( "pkg:/manifest" )
+    manifestData = ParseManifestString( manifestText )
+    if ( manifestData = invalid ) then
+        dialog.Close()
+        ShowDialog1Button( "Error", "Failed to read the manifest file, please let Protuhj know about this error message!" + Chr(10) + "Error: 1", "Ok" )
+        return
+    end if
+
+    rsp = QueryForJson( "https://github.com/Protuhj/myvideobuzz/raw/master/manifest" )
+    if ( rsp.status = 200 AND rsp.rsp <> invalid ) then
+        remoteManifestData = ParseManifestString( rsp.rsp )
+        if ( remoteManifestData = invalid ) then
+            dialog.Close()
+            ShowDialog1Button( "Error", "Failed to read the manifest file from GitHub, please let Protuhj know about this error message!" + Chr(10) + "Error: 2", "Ok" )
+            return
+        end if
+        if ( isRemoteManifestNewer( remoteManifestData, manifestData ) ) then
+            dialog.Close()
+            if ( ShowDialog2Buttons( "Update Available", "A new Development Version is available (" + remoteManifestData.versionStr + "), would you like to update the channel now?" + Chr(10) + "The channel will automatically restart if you do.", "Not Now", "Update" ) = 2 ) then
+                status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/raw/master/myvideobuzz.zip" )
+                if ( status% <> 200 ) then
+                    if ( status% = 401 ) then
+                        if ( ShowDialog2Buttons( "Roku Password Incorrect", "The password you entered for your Roku seems to be incorrect, would you like to edit it now?", "Not Now", "Yes" ) = 2 ) then
+                            getYoutube().GeneralSettings()
+                        end if
+                    else
+                        ShowDialog1Button( "Error", "Unexpected error while trying to update the channel, code: " + tostr( status% ), "Ok" )
+                    end if
+                    return
+                end if
+            end if
+        else
+            dialog.Close()
+            ShowDialog1Button( "Info", "No New Development Version Available", "Ok" )
+        end if
+    else
+        dialog.Close()
+        ShowDialog1Button( "Error", "Failed to query GitHub to check for a development update, code: " + tostr( rsp.status ), "Ok" )
+    end if
+End Sub
+
+Sub ForceLatestRelease()
+    if ( getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) = "" ) then
+        if ( ShowDialog2Buttons( "Roku Password Not Set", "You need to enter the password you entered for your Roku when you enabled development mode, would you like to do it now?", "Not Now", "Yes" ) = 2 ) then
+            getYoutube().GeneralSettings()
+        end if
+        return
+    end if
+    dialog = ShowPleaseWait( "Getting the latest release information..." )
+    rsp = QueryForJson( "https://api.github.com/repos/Protuhj/myvideobuzz/releases" )
+    if ( rsp.json <> invalid ) then
+        dialog.Close()
+        if ( ShowDialog2Buttons( "Update Available", "The current Release is: " + rsp.json[0].tag_name + ", would you like to attempt to update the channel now?" + Chr(10) + "The channel will automatically restart if the channel is different.", "Not Now", "Update" ) = 2 ) then
+            if ( rsp.json[0].assets[0].browser_download_url <> invalid ) then
+                status% = DoUpdate( rsp.json[0].assets[0].browser_download_url )
+            else
+                status% = DoUpdate( "https://github.com/Protuhj/myvideobuzz/releases/download/" + rsp.json[0].tag_name + "/" + rsp.json[0].assets[0].name )
+            end if
+            if ( status% <> 200 ) then
+                if ( status% = 401 ) then
+                    if ( ShowDialog2Buttons( "Roku Password Incorrect", "The password you entered for your Roku seems to be incorrect, would you like to edit it now?", "Not Now", "Yes" ) = 2 ) then
+                        getYoutube().GeneralSettings()
+                    end if
+                else
+                    ShowDialog1Button( "Error", "Unexpected error while trying to update the channel, code: " + tostr( status% ), "Ok" )
+                end if
+                return
+            end if
+        end if
+    else
+        dialog.Close()
+        ShowDialog1Button( "Error", "Failed to query GitHub to check for a new Release, code: " + tostr( rsp.status ), "Ok" )
+    end if
+End Sub
+
+Function ParseManifestString( manifestText as String ) as Dynamic
+    majorRegex = CreateObject( "roRegex", "major_version=(\d*)", "i" )
+    minorRegex = CreateObject( "roRegex", "minor_version=(\d*)", "i" )
+    buildRegex = CreateObject( "roRegex", "build_version=(\d+)", "i" )
+    builtDateRegex = CreateObject( "roRegex", "build_date=(.*?)$", "i" )
+    majorMatch = majorRegex.Match( manifestText )
+    minorMatch = minorRegex.Match( manifestText )
+    buildMatch = buildRegex.Match( manifestText )
+    builtMatch = builtDateRegex.Match( manifestText )
+
+    if ( majorMatch.Count() < 2 OR minorMatch.Count() < 2 OR buildMatch.Count() < 2 ) then
+        return invalid
+    end if
+    retVal = {}
+    retVal.majorVer = strtoi( majorMatch[1] )
+    retVal.minorVer = strtoi( minorMatch[1] )
+    retVal.buildNum = strtoi( buildMatch[1] )
+    if ( builtMatch.Count() > 1 ) then
+        retVal.builtStr = builtMatch[1]
+    else
+        retVal.builtStr = "Built date missing from manifest!"
+    end if
+    retVal.versionStr = majorMatch[1] + "." + minorMatch[1] + "." + buildMatch[1]
+    return retVal
+End Function
+
+Function isRemoteManifestNewer( remoteManifestData as Object, localManifestData as Object ) as Boolean
+    retVal = false
+    if ( remoteManifestData.majorVer > localManifestData.majorVer ) then
+        retVal = true
+    else if ( remoteManifestData.majorVer = localManifestData.majorVer ) then
+        if ( remoteManifestData.minorVer > localManifestData.minorVer ) then
+            retVal = true
+        else if ( remoteManifestData.minorVer = localManifestData.minorVer ) then
+            if ( remoteManifestData.buildNum > localManifestData.buildNum ) then
+                retVal = true
+            end if
+        end if
+    end if
+    return retVal
+End Function
 
 Sub ClearHistory_impl( showDialog = true as Boolean )
     RegDelete( "videos", "history" )
@@ -276,8 +480,137 @@ Function getEnumValueForType( enumType as String, index as Integer ) as Object
     return retVal
 End Function
 
+Function isReleaseNewer( releaseVer as String ) as Boolean
+    retVal = false
+    constants = getConstants()
+    vRegex = CreateObject( "roRegex", "v", "i" )
+    strVersion = vRegex.ReplaceAll( releaseVer, "" )
+    curVersionSplit = strTokenize( constants.VERSION_STR, "." )
+    newVersionSplit = strTokenize( strVersion, "." )
+    curVersionMajor = 0
+    curVersionMinor = 0
+    curVersionSub   = 0
+
+    newVersionMajor = 0
+    newVersionMinor = 0
+    newVersionSub   = 0
+    idx% = 0
+    for each str in curVersionSplit
+        val = firstValid( strtoi( str ), 0 )
+        if ( idx% = 0 ) then
+            curVersionMajor = val
+        else if ( idx% = 1 ) then
+            curVersionMinor = val
+        else
+            curVersionSub = val
+        end if
+        idx% = idx% + 1
+    end for
+    idx% = 0
+    for each str in newVersionSplit
+        val = firstValid( strtoi( str ), 0 )
+        if ( idx% = 0 ) then
+            newVersionMajor = val
+        else if ( idx% = 1 ) then
+            newVersionMinor = val
+        else
+            newVersionSub = val
+        end if
+        idx% = idx% + 1
+    end for
+
+    if ( newVersionMajor > curVersionMajor ) then
+        retVal = true
+    else if ( newVersionMajor = curVersionMajor ) then
+        if ( newVersionMinor > curVersionMinor ) then
+            retVal = true
+        else if ( newVersionMinor = curVersionMinor ) then
+            if ( newVersionSub > curVersionSub ) then
+                retVal = true
+            end if
+        end if
+    end if
+
+    return retVal
+End Function
+
+' 5     - temp.zip doesn't exist on the filesystem.
+' 10    - timeout waiting for response
+Function DoUpdate( strLocation as String ) as Integer
+    retVal = 0
+    port = CreateObject( "roMessagePort" )
+    ut = CreateObject("roUrlTransfer")
+    ut.AddHeader( "User-Agent", "curl/7.33.0" )
+    ut.SetPort( port )
+    ut.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
+    ut.SetCertificatesDepth( 3 )
+    ut.InitClientCertificates()
+    ut.SetUrl( strLocation )
+    fs = CreateObject( "roFileSystem" )
+    ut2 = CreateObject( "roUrlTransfer" )
+    ut2.SetPort( port )
+    boundary$ = "------------------------5dc38edd8963db02"
+    if ( ut.AsyncGetToFile("tmp:/temp.zip") = true ) then
+        respCount = 0
+        while ( true )
+            msg = Wait( 10000, port )
+            if ( type(msg) = "roUrlEvent" ) then
+                respCount = respCount + 1
+                ' print "Response received: " + msg.GetString()
+
+                status = msg.GetResponseCode()
+                if ( status = 200 AND respCount < 2 ) then
+                    if ( fs.Exists( "tmp:/temp.zip" ) = true ) then
+                        print "File exists, size: " ; tostr( fs.Stat( "tmp:/temp.zip"  ).size )
+                        ut2.SetUserAndPassword( "rokudev", getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) )
+                        IPs = createObject("roDeviceInfo").getIpAddrs()
+                        IPs.reset()
+                        ip = IPs[IPs.next()]
+                        ut2.SetUrl( "http://" + ip + "/plugin_install" )
+                        ct = "multipart/form-data; boundary=" + boundary$
+                        ut2.AddHeader("Content-Type", ct )
+                        textBytes = CreateObject( "roByteArray" )
+                        PostString$ = boundary$ +  Chr(13) + Chr(10) + GetContentDisposition2( "Install" ) + boundary$ +  Chr(13) + Chr(10) + GetContentDisposition( "temp.zip" )
+                        textBytes.FromAsciiString( PostString$ )
+                        textBytes.WriteFile( "tmp:/tempText.req" )
+                        boundaryBytes = CreateObject( "roByteArray" )
+                        boundaryBytes.FromAsciiString( Chr(13) + Chr(10) + boundary$ + "--" + Chr(13) + Chr(10) + Chr(13) + Chr(10) )
+
+                        bytes = CreateObject( "roByteArray" )
+                        bytes.ReadFile( "tmp:/temp.zip" )
+                        ret = bytes.AppendFile( "tmp:/tempText.req" )
+                        ret = boundaryBytes.AppendFile( "tmp:/tempText.req" )
+                        fs.Delete( "tmp:/temp.zip" )
+                        ret = ut2.AsyncPostFromFile( "tmp:/tempText.req" )
+                        fs.Delete( "tmp:/tempText.req" )
+                    else
+                        retVal = 5
+                        exit while
+                    end if
+                else
+                    retVal = status
+                    exit while
+                end if
+            else if ( type(msg) = "Invalid" ) then
+                if ( respCount = 1 ) then
+                    ut2.AsyncCancel()
+                end if
+                retVal = 10
+                exit while
+            end if
+        end while
+    else
+        print "File doesn't exist"
+        retVal = 5
+    end if
+    fs.Delete( "tmp:/temp.zip" )
+    return retVal
+End Function
+
 Function LoadConstants() as Object
     this = {}
+    this.VERSION_STR       = "1.7.2"
+    this.USER_AGENT        = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
     this.NO_PREFERENCE     = 0
     this.FORCE_HIGHEST     = 1
     this.FORCE_LOWEST      = 2
@@ -296,6 +629,7 @@ Function LoadConstants() as Object
     this.pVIDEO_QUALITY     = "VideoQuality"
     this.pREDDIT_FEED       = "RedditFeed"
     this.pREDDIT_FILTER     = "RedditFilter"
+    this.pROKU_PASSWORD     = "RokuPassword"
 
     ' Source strings
     this.sYOUTUBE           = "YouTube"
@@ -303,6 +637,8 @@ Function LoadConstants() as Object
     this.sVINE              = "Vine"
     this.sGFYCAT            = "Gfycat"
     this.sLIVELEAK          = "LiveLeak"
+    this.sVKONTAKTE         = "VKontakte"
+    this.sVIDZI             = "Vidzi.tv"
 
     ' Reddit Query Indices
     this.sRED_HOT           = 0
@@ -318,6 +654,9 @@ Function LoadConstants() as Object
     this.sRED_YEAR          = 3
     this.sRED_ALL           = 4
 
+    ' Success error codes
+    this.ERR_NORMAL_END     = &hFC
+    this.ERR_VALUE_RETURN   = &hE2
 
     return this
 End Function

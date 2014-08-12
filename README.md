@@ -20,9 +20,10 @@ When development mode is enabled on your Roku, you can install dev packages
 from the Application Installer which runs on your device at your device's IP
 address. Open up a standard web browser and visit the following URL:
 
-    http://<rokuPlayer-ip-address> (for example, http://192.168.1.6)
+    http://<rokuPlayer-ip-address> (for example, http://192.168.1.7)
 
-[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.6.1/MyVideoBuzz_v1_6_1.zip) and upload it to your Roku device.
+[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.7.2/MyVideoBuzz_v1_7_2.zip) and upload it to your Roku device.  
+**Do not unzip this file! Upload the whole file to your Roku!**
 
 Due to limitations in the sandboxing of development Roku channels, you can only
 have one development channel installed at a time.
@@ -31,8 +32,8 @@ have one development channel installed at a time.
 
 ### Alternative Installation Method - Windows users
 
-Download the whole repository [Here - Current Release: 1.6.1](https://github.com/Protuhj/myvideobuzz/archive/v1.6.1.zip)
-Edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
+Download the whole repository [Here - Current Release: 1.7.2](https://github.com/Protuhj/myvideobuzz/archive/v1.7.2.zip)  
+Unzip the file and edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
 
     <Roku IP><space>rokudev:<rokupassword>
     192.168.1.56 rokudev:rokupassword
@@ -43,6 +44,21 @@ You can copy the .\deploy\ folder somewhere permanent on your hard drive, and mo
 by changing the ZIP_LOCATION variable to point to the location of the zip you would like to deploy.
 
 By doing this, you won't have to edit the rokus.txt in the future when updating your Rokus.
+
+### Updating the channel
+
+As of version 1.7.2, the channel supports auto-updating itself. That means, once the channel is installed, you can update it from within the channel itself.
+
+* There are three ways the channel can update itself:
+  1) A New Release (i.e. version is greater than the current version installed on your Roku, like 1.7.2 vs. 17.1).
+  2) The current master (development) build has a newer version (major, minor, build #) than the currently installed version.
+  3) Force the current latest release.
+
+* **The only thing that needs to be done in order to use this feature, is to set your Roku password that you set when you enabled development mode.**
+  * This can be used by going into the "Settings" item on the channel's main page, then the "General" item, then choose the "Roku Development Password" item, and enter your Roku's password. (The username is "rokudev" if that jars your memory.)
+  * Once you've entered your password, go back to the main "Settings" page, and go to "About" -- you can then use the buttons at the bottom of the screen to choose which update option you'd like.
+
+* Note: if a channel update is successful, there is no notification as such, it will just restart itself, like when you normally re-upload the channel's zip file.
 <br/>
 <br/>
 
@@ -72,6 +88,7 @@ Your Roku's debug console can be accessed by telnet at port 8085:
 ## Contributing
 
 
-Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz
+Want to contribute? Great! Visit the subreddit here: http://www.reddit.com/r/VideoBuzz  
+You can also check out my Facebook page here: https://www.facebook.com/Protuhj
 
 Or Donate: <a href='https://pledgie.com/campaigns/23378'><img alt='Click here to lend your support to: VideoBuzz Development and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/23378.png?skin_name=chrome' border='0' ></a>

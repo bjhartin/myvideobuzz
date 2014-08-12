@@ -83,7 +83,8 @@ Function http_prep(method="" As String)
     end if
     urlobj.SetPort(m.port)
     urlobj.SetCertificatesFile("common:/certs/ca-bundle.crt")
-    urlobj.SetCertificatesDepth( 3 )
+    ' Wrap in an eval() block to catch any potential errors.
+    eval( "urlobj.SetCertificatesDepth( 3 )" )
     urlobj.EnableEncodings(true)
     urlobj.AddHeader("Expect","")
     'urlobj.RetainBodyOnError(true)

@@ -25,7 +25,8 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
     screen.showMessage( "Loading subreddits..." )
     ' Added for https thumbnail support.
     screen.SetCertificatesFile( "common:/certs/ca-bundle.crt" )
-    screen.SetCertificatesDepth( 3 )
+    ' Wrap in an eval() block to catch any potential errors with older firmware.
+    eval( "screen.SetCertificatesDepth( 3 )" )
     screen.InitClientCertificates()
     categories = RedditCategoryList()
     if (url = "videos") then
@@ -90,7 +91,7 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
                 else if ( video[set_idx]["isPlaylist"] = true ) then
                     ' printAA( video[set_idx] )
                     if ( video[set_idx]["Source"] = GetConstants().sYOUTUBE ) then
-                        youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist..." )
+                        youtube.FetchVideoList( video[set_idx]["URL"], video[set_idx]["TitleSeason"], invalid, invalid, "Loading playlist...", true )
                     else if ( video[set_idx]["Source"] = GetConstants().sGOOGLE_DRIVE ) then
                         getGDriveFolderContents( video[set_idx] )
                     end if
@@ -209,21 +210,27 @@ Function NewRedditVideoList(jsonObject As Object) As Object
     for each record in jsonObject
         domain = LCase( record.data.domain ).Trim()
         supported = false
-        if ( domain = "youtube.com" OR domain = "youtu.be" ) then
+        if ( domain = "youtube.com" OR domain = "youtu.be" OR domain = "m.youtube.com" ) then
             video = NewRedditVideo( record )
             supported = true
         else if ( domain = "docs.google.com" OR domain = "drive.google.com" ) then
             video = NewRedditVideo( record, constants.sGOOGLE_DRIVE )
             supported = true
-        else if ( domain = "gfycat.com" ) then
+        else if ( domain = "gfycat.com" OR domain.InStr( 0, ".gfycat.com" ) > 0 ) then
             video = NewRedditGfycatVideo( record )
             supported = true
-        else if ( domain = "liveleak.com" ) then
+        else if ( domain = "liveleak.com" OR domain = "m.liveleak.com" ) then
             video = NewRedditURLVideo( record, constants.sLIVELEAK )
             video["URL"] = video["URL"] + "&ajax=1"
             supported = true
         else if ( domain = "vine.co" ) then
             video = NewRedditURLVideo( record, constants.sVINE )
+            supported = true
+        else if ( domain = "vkontakte.com" or domain = "vk.com" ) then
+            video = NewRedditURLVideo( record, constants.sVKONTAKTE )
+            supported = true
+        else if ( domain = "vidzi.tv" ) then
+            video = NewRedditURLVideo( record, constants.sVIDZI )
             supported = true
         end if
         if ( supported = true AND video <> invalid AND video["ID"] <> invalid AND video["ID"] <> "" ) then
@@ -447,6 +454,10 @@ Function getDefaultThumb( currentThumb as Dynamic, source as String ) as String
             currentThumb = "pkg:/images/LiveLeak.jpg"
         else if ( Source = constants.sVINE ) then
             currentThumb = "pkg:/images/vine.jpg"
+        else if ( Source = constants.sVKONTAKTE ) then
+            currentThumb = "pkg:/images/vkontakte.jpg"
+        else if ( Source = constants.sVIDZI ) then
+            currentThumb = "pkg:/images/Vidzi.jpg"
         else
             currentThumb = "pkg:/images/no_thumb.jpg"
         end if
@@ -529,26 +540,26 @@ Sub EditRedditSettings()
     settingmenu = [
         {
             Title: "Manage Subreddits",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             callback: "ManageSubreddits"
         },
         {
             Title: "Show on Home Screen",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_ENABLED )
         },
         {
             Title: "Reddit Feed to Display",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_FEED )
         },
         {
             Title: "Reddit Filter to Apply",
-            HDPosterUrl:"pkg:/images/reddit_beta.jpg",
-            SDPosterUrl:"pkg:/images/reddit_beta.jpg",
+            HDPosterUrl:"pkg:/images/reddit.jpg",
+            SDPosterUrl:"pkg:/images/reddit.jpg",
             prefData: getPrefs().getPrefData( getConstants().pREDDIT_FILTER )
         }
     ]

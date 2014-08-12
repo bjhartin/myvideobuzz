@@ -86,33 +86,29 @@ Sub ShowDialog1Button(title As Dynamic, text As Dynamic, but1 As String, quickRe
         text = ""
     end if
 
-    Dbg("DIALOG1: ", title + " - " + text)
-
     port = CreateObject( "roMessagePort" )
     dialog = CreateObject( "roMessageDialog" )
-    dialog.SetMessagePort(port)
+    dialog.SetMessagePort( port )
 
-    dialog.SetTitle(title)
-    dialog.SetText(text)
-    dialog.AddButton(0, but1)
+    dialog.SetTitle( title )
+    dialog.SetText( text )
+    dialog.AddButton( 0, but1 )
     dialog.Show()
 
-    if (quickReturn = true) then
+    if ( quickReturn = true ) then
         return
     end if
 
-    while (true)
-        dlgMsg = wait(2000, dialog.GetMessagePort())
+    while ( true )
+        dlgMsg = wait( 2000, dialog.GetMessagePort() )
 
-        if (type(dlgMsg) = "roMessageDialogEvent") then
-            if (dlgMsg.isScreenClosed()) then
-                print "Screen closed"
+        if ( type( dlgMsg ) = "roMessageDialogEvent" ) then
+            if ( dlgMsg.isScreenClosed() ) then
                 return
-            else if (dlgMsg.isButtonPressed()) then
-                'print "Button pressed: "; dlgMsg.GetIndex(); " " dlgMsg.GetData()
+            else if ( dlgMsg.isButtonPressed() ) then
                 return
             end if
-        else if (dlgMsg = invalid) then
+        else if ( dlgMsg = invalid ) then
             CheckForMCast()
         end if
     end while
@@ -139,8 +135,8 @@ Function ShowDialog2Buttons(title As dynamic, text As dynamic, but1 As String, b
     dialog.SetTitle(title)
     dialog.SetText(text)
     dialog.SetMenuTopLeft( true )
-    dialog.AddButton(0, but1)
-    dialog.AddButton(1, but2)
+    dialog.AddButton(1, but1)
+    dialog.AddButton(2, but2)
     dialog.Show()
 
     while (true)
@@ -165,32 +161,33 @@ End Function
 '******************************************************
 'Get input from the keyboard
 '******************************************************
-Function getKeyboardInput(title As String, search_text As String, submit_text="Submit" As String, cancel_text="Cancel" As String)
-    screen=CreateObject("roKeyboardScreen")
-    port=CreateObject("roMessagePort")
+Function getKeyboardInput(title As String, search_text As String, default_text = "" as String, submit_text="Submit" As String, cancel_text="Cancel" As String)
+    screen = CreateObject( "roKeyboardScreen" )
+    port = CreateObject( "roMessagePort" )
 
-    screen.SetMessagePort(port)
-    screen.SetTitle(title)
-    screen.SetDisplayText(search_text)
-    screen.AddButton(1, submit_text)
-    screen.AddButton(2, cancel_text)
+    screen.SetMessagePort( port )
+    screen.SetTitle( title )
+    screen.SetText( default_text )
+    screen.SetDisplayText( search_text )
+    screen.AddButton( 1, submit_text )
+    screen.AddButton( 2, cancel_text )
     screen.Show()
 
-    while (true)
-        msg = wait(2000, screen.GetMessagePort())
+    while ( true )
+        msg = wait( 2000, screen.GetMessagePort() )
 
-        if (type(msg) = "roKeyboardScreenEvent") then
-            if (msg.isScreenClosed()) then
+        if ( type( msg ) = "roKeyboardScreenEvent" ) then
+            if ( msg.isScreenClosed() ) then
                 return invalid
-            else if (msg.isButtonPressed()) then
-                if (msg.GetIndex() = 1) then
-                    inputText = screen.GetText()
+            else if ( msg.isButtonPressed() ) then
+                if ( msg.GetIndex() = 1 ) then
+                    inputText = screen.GetText().Trim()
                     return inputText
                 else
                     return invalid
                 end if
             end if
-        else if (msg = invalid) then
+        else if ( msg = invalid ) then
             CheckForMCast()
         end if
     end while

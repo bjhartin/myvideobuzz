@@ -1,10 +1,11 @@
 title=MyVideoBuzz
-subtitle=Fork of the popular channel -- by Protuhj
+subtitle=Protuhj's fork of the popular channel
 mm_icon_focus_hd=pkg:/images/MainMenu_Icon_CenterFocus_HD.png
 mm_icon_side_hd=pkg:/images/MainMenu_Icon_Side_HD.png
 mm_icon_focus_sd=pkg:/images/MainMenu_Icon_CenterFocus_SD.png
 mm_icon_side_sd=pkg:/images/MainMenu_Icon_Side_SD.png
 splash_min_time=250
 major_version=1
-minor_version=6
-build_version=00904
+minor_version=7
+build_version=27
+build_date=10:18 PM Monday, August 11, 2014
