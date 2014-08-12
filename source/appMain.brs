@@ -84,27 +84,6 @@ Sub ShowHomeScreen()
     sleep(25)
 End Sub
 
-Function GetContentDisposition(file As String) As String
-
-'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
-
-    'contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "archive" + chr(34) + "; filename=" + chr(34) + file + chr(34) +  Chr(13) + Chr(10) + "Content-Transfer-Encoding: base64" + Chr(13) + Chr(10) + "Content-Type: application/octet-stream" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
-    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "archive" + chr(34) + "; filename=" + chr(34) + file + chr(34) +  Chr(13) + Chr(10) + "Content-Type: application/octet-stream" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
-
-    return contentDisposition$
-    
-End Function
-
-Function GetContentDisposition2(file As String) As String
-
-'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"
-
-    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "mysubmit" + chr(34) +  Chr(13) + Chr(10) + Chr(13) + Chr(10) + file + Chr(13) + Chr(10)
-
-    return contentDisposition$
-    
-End Function
-
 '*************************************************************
 '** Set the configurable theme attributes for the application
 '**
