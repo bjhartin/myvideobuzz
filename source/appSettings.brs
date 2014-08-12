@@ -534,6 +534,16 @@ Function isReleaseNewer( releaseVer as String ) as Boolean
     return retVal
 End Function
 
+Function GetDispZip(file As String) As String
+    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "archive" + chr(34) + "; filename=" + chr(34) + file + chr(34) +  Chr(13) + Chr(10) + "Content-Type: application/octet-stream" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
+    return contentDisposition$
+End Function
+
+Function GetDispInstall(file As String) As String
+    contentDisposition$ = "Content-Disposition: form-data; name=" + chr(34) + "mysubmit" + chr(34) +  Chr(13) + Chr(10) + Chr(13) + Chr(10) + file + Chr(13) + Chr(10)
+    return contentDisposition$
+End Function
+
 ' 5     - temp.zip doesn't exist on the filesystem.
 ' 10    - timeout waiting for response
 Function DoUpdate( strLocation as String ) as Integer
@@ -570,7 +580,7 @@ Function DoUpdate( strLocation as String ) as Integer
                         ct = "multipart/form-data; boundary=" + boundary$
                         ut2.AddHeader("Content-Type", ct )
                         textBytes = CreateObject( "roByteArray" )
-                        PostString$ = boundary$ +  Chr(13) + Chr(10) + GetContentDisposition2( "Install" ) + boundary$ +  Chr(13) + Chr(10) + GetContentDisposition( "temp.zip" )
+                        PostString$ = boundary$ +  Chr(13) + Chr(10) + GetDispInstall( "Install" ) + boundary$ +  Chr(13) + Chr(10) + GetDispZip( "temp.zip" )
                         textBytes.FromAsciiString( PostString$ )
                         textBytes.WriteFile( "tmp:/tempText.req" )
                         boundaryBytes = CreateObject( "roByteArray" )
