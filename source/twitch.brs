@@ -5,7 +5,7 @@
 '             http://www.reddit.com/dev/api#section_listings
 '******************************************************************************
 Sub ViewTwitch(youtube as Object)
-    newTwitchVideo( "circon" )
+    newTwitchVideo( "day9tv" )
 End Sub
 '******************************************************************************
 ' Main function to begin displaying subreddit content
@@ -55,6 +55,37 @@ Function NewTwitchGameList(jsonObject As Object) As Object
         gameList.Push( NewTwitchGameLink( record ) )
     next
     return gameList
+End Function
+
+Function newTwitchVideo( channel as String ) As Object
+    result = QueryForJson( "http://api.twitch.tv/api/channels/" + channel + "/access_token?as3=t" )
+    print "Sig: " ; result.json.sig
+    print "Token: " ; result.json.token
+    'QueryForJson( "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token )'+ "&allow_source=true" )
+    meta                   = {}
+    meta["Author"]                 = channel
+    meta["TitleSeason"]            = channel + " Live"
+    meta["Title"]                  = meta["Author"]
+    meta["Actors"]                 = meta["Author"]
+    meta["FullDescription"]        = "Live Stream"
+    meta["Description"]            = "Lame"
+    meta["Categories"]             = "Live Stream"
+    meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
+    meta["ShortDescriptionLine2"]  = meta["Title"]
+    meta["SDPosterUrl"]            = getDefaultThumb( invalid, "" )
+    meta["HDPosterUrl"]            = getDefaultThumb( invalid, "" )
+    meta["Length"]                 = 0
+    meta["UserID"]                 = channel
+    meta["StreamFormat"]           = "hls"
+    meta["Live"]                   = true
+    meta["Streams"]                = []
+    meta["Source"]                 = "twitch"
+    ' Set the PlayStart sufficiently large so it starts at 'Live' position
+    meta["PlayStart"]              = 500000
+    meta["SwitchingStrategy"]      = "no-adaptation"
+    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
+    DisplayVideo(meta)
+    return meta
 End Function
 
 '******************************************************************************

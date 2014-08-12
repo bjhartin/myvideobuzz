@@ -80,41 +80,10 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
-    'newTwitchVideo( "circon" )
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub
 
-Function newTwitchVideo( channel as String ) As Object
-    result = QueryForJson( "http://api.twitch.tv/api/channels/" + channel + "/access_token?as3=t" )
-    print "Sig: " ; result.json.sig
-    print "Token: " ; result.json.token
-    'QueryForJson( "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token )'+ "&allow_source=true" )
-    meta                   = {}
-    meta["Author"]                 = channel
-    meta["TitleSeason"]            = channel + " Live"
-    meta["Title"]                  = meta["Author"]
-    meta["Actors"]                 = meta["Author"]
-    meta["FullDescription"]        = "Live Stream"
-    meta["Description"]            = "Lame"
-    meta["Categories"]             = "Live Stream"
-    meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
-    meta["ShortDescriptionLine2"]  = meta["Title"]
-    meta["SDPosterUrl"]            = getDefaultThumb( invalid, "" )
-    meta["HDPosterUrl"]            = getDefaultThumb( invalid, "" )
-    meta["Length"]                 = 0
-    meta["UserID"]                 = channel
-    meta["StreamFormat"]           = "hls"
-    meta["Live"]                   = true
-    meta["Streams"]                = []
-    meta["Source"]                 = "twitch"
-    ' Set the PlayStart sufficiently large so it starts at 'Live' position
-    meta["PlayStart"]              = 500000
-    meta["SwitchingStrategy"]      = "no-adaptation"
-    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
-    DisplayVideo(meta)
-    return meta
-End Function
 Function GetContentDisposition(file As String) As String
 
 'Content-Disposition: form-data; name="file"; filename="UploadPlaylog.xml"

@@ -115,17 +115,7 @@ End Sub
 ' @param categoryObject the (optional) category object for the current subreddit (category)
 '******************************************************************************
 Function doQuery(multireddits = "videos" as String, includePrevious = false as Boolean, categoryObject = invalid as Dynamic) as Object
-    url = multireddits
-    if (Instr(0, multireddits, "http://")) then
-        url = multireddits
-    else
-        redditQueryType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, m.prefs.getPrefValue( m.prefs.RedditFeed.key ) ), "Hot" ) )
-        redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, m.prefs.getPrefValue( m.prefs.RedditFilter.key ) ), "All" ) )
-        url = "http://www.reddit.com/r/" + multireddits + "/" + redditQueryType + ".json?t=" + redditFilterType
-    end if
-    response = QueryForJson( url )
-    http = NewHttp( url )
-    
+    response = QueryReddit( multireddits )
     if ( response.status = 403 ) then
         ShowErrorDialog(multireddits + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
         return []
@@ -137,23 +127,10 @@ Function doQuery(multireddits = "videos" as String, includePrevious = false as B
 
     ' Everything is OK, display the list
     json = response.json
-    links = CreateObject("roArray", 1, true)
-    if (json <> invalid) then
-        if (json.data <> invalid AND json.data.after <> invalid) then
-            link = CreateObject("roAssociativeArray")
-            link.func = doQuery
-            link.type = "next"
-            http.RemoveParam("after", "urlParams")
-            http.AddParam("after", json.data.after, "urlParams")
-            link.href = http.GetURL()
-            links.Push(link)
-        end if
-        ' Reddit doesn't give a "real" previous URL
-    end if
     metadata = GetRedditMetaData( NewRedditVideoList( json.data.children ) )
 
     ' Now add the 'More results' button
-    for each link in links
+    for each link in response.links
         if (type(link) = "roAssociativeArray") then
             if (link.type = "next") then
                 metadata.Push({shortDescriptionLine1: "More Results", action: "next", HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
@@ -182,26 +159,49 @@ End Function
 '                   href = URL to the next or previous page of results
 '               status = the HTTP status code response from the GET call
 '******************************************************************************
-Function QueryForJson(url as String) As Object
-    http = NewHttp( url )
+Function QueryReddit(multireddits = "videos" as String) As Object
+    prefs = getPrefs()
+    method = "GET"
+    if (Instr(0, multireddits, "http://")) then
+        http = NewHttp( multireddits )
+    else
+        redditQueryType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_QUERIES, prefs.getPrefValue( prefs.RedditFeed.key ) ), "Hot" ) )
+        redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "All" ) )
+        http = NewHttp("http://www.reddit.com/r/" + multireddits + "/" + redditQueryType + ".json?t=" + redditFilterType)
+    end if
     headers = {}
-    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
-    http.method = "GET"
-    rsp = http.getToStringWithTimeout( 10, headers )
 
-    print "----------------------------------"
-    print rsp
-    print "----------------------------------"
+    http.method = method
+    rsp = http.getToStringWithTimeout(10, headers)
 
-    returnObj = {}
-    returnObj.json = ParseJson( rsp )
+    ' print "----------------------------------"
+    ' print rsp
+    ' print "----------------------------------"
+
+    json = ParseJson(rsp)
+    links = CreateObject("roArray", 1, true)
+    if (json <> invalid) then
+        if (json.data.after <> invalid) then
+            link = CreateObject("roAssociativeArray")
+            link.func = doQuery
+            link.type = "next"
+            http.RemoveParam("after", "urlParams")
+            http.AddParam("after", json.data.after, "urlParams")
+            link.href = http.GetURL()
+            links.Push(link)
+        end if
+        ' Reddit doesn't give a "real" previous URL
+    end if
+    returnObj = CreateObject("roAssociativeArray")
+    returnObj.json = json
+    returnObj.links = links
     returnObj.status = http.status
     return returnObj
 End Function
 
 '******************************************************************************
 ' Creates an roList of video objects, determining if they are from YouTube AND the ID was properly parsed from the URL
-' @param jsonObject the JSON object that was received in QueryForJson
+' @param jsonObject the JSON object that was received in QueryReddit
 ' @return an roList of video objects that are from YouTube AND have a valid video ID associated
 '******************************************************************************
 Function NewRedditVideoList(jsonObject As Object) As Object
@@ -268,7 +268,7 @@ End Function
 
 '******************************************************************************
 ' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
-' @param jsonObject the JSON "data" object that was received in QueryForJson, this is one result of many
+' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
 Function NewRedditVideo(jsonObject As Object, source = "YouTube" as String) As Object
@@ -365,7 +365,7 @@ End Function
 '******************************************************************************
 ' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
 ' This function handles Gfycat videos
-' @param jsonObject the JSON "data" object that was received in QueryForJson, this is one result of many
+' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
 Function NewRedditGfycatVideo(jsonObject As Object) As Object
@@ -407,7 +407,7 @@ End Function
 '******************************************************************************
 ' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
 ' This function handles sites that require parsing a response for an MP4 URL (LiveLeak, Vine)
-' @param jsonObject the JSON "data" object that was received in QueryForJson, this is one result of many
+' @param jsonObject the JSON "data" object that was received in QueryReddit, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
 Function NewRedditURLVideo(jsonObject As Object, Source as String) As Object
