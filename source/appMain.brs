@@ -79,6 +79,11 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
+    if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_REL ) then
+        CheckForNewRelease( true )
+    else if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_NEW ) then
+        CheckForNewMaster( true )
+    end if
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub

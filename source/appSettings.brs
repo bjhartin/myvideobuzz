@@ -63,6 +63,14 @@ Function LoadPreferences() as Object
         enumType: consts.eREDDIT_FILTERS
         })
 
+    prefs.AutoUpdateCheck = createPref( { prefName: "Automatically Check For Updates",
+        prefDesc: "Automatically check for updates when the channel boots?",
+        prefDefault: consts.sUPDATE_OFF,
+        prefKey: consts.pAUTO_UPDATE,
+        prefType: "enum",
+        enumType: consts.eAUTO_UPDATE_CHECK
+        })
+
     prefs.getPrefData  = getPrefData_impl
     prefs.getPrefValue = getPrefValue_impl
     prefs.setPrefValue = setPrefValue_impl
@@ -151,6 +159,12 @@ Sub EditGeneralSettings()
             HDPosterUrl:"pkg:/images/Settings.jpg",
             SDPosterUrl:"pkg:/images/Settings.jpg",
             prefData: getPrefs().getPrefData( getConstants().pROKU_PASSWORD )
+        },
+        {
+            Title: "Auto Update",
+            HDPosterUrl:"pkg:/images/Settings.jpg",
+            SDPosterUrl:"pkg:/images/Settings.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pAUTO_UPDATE )
         }
     ]
 
@@ -229,9 +243,9 @@ Sub youtube_about()
             if ( msg.isButtonPressed() = true ) then
                 button% = msg.GetIndex()
                 if ( button% = 1 ) then ' Check for a new Release
-                    CheckForNewRelease()
+                    CheckForNewRelease( false )
                 else if ( button% = 2 ) then ' Check for a new Development release
-                    CheckForNewMaster()
+                    CheckForNewMaster( false )
                 else if ( button% = 3 ) then ' Force Update To Latest
                     ForceLatestRelease()
                 else
@@ -246,7 +260,7 @@ Sub youtube_about()
     end while
 End Sub
 
-Sub CheckForNewRelease()
+Sub CheckForNewRelease( autoCloseNoUpdateDlg as Boolean )
     if ( getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) = "" ) then
         if ( ShowDialog2Buttons( "Roku Password Not Set", "You need to enter the password you entered for your Roku when you enabled development mode, would you like to do it now?", "Not Now", "Yes" ) = 2 ) then
             getYoutube().GeneralSettings()
@@ -277,7 +291,13 @@ Sub CheckForNewRelease()
             end if
         else
             dialog.Close()
-            ShowDialog1Button( "Info", "No New Releases Available", "Ok" )
+            if ( not( autoCloseNoUpdateDlg ) ) then
+                ShowDialog1Button( "Info", "No New Releases Available", "Ok" )
+            else
+                tmpDlg = ShowDialogNoButton( "No New Releases Available", "" )
+                sleep( 3000 )
+                tmpDlg.Close()
+            end if
         end if
     else
         dialog.Close()
@@ -285,14 +305,14 @@ Sub CheckForNewRelease()
     end if
 End Sub
 
-Sub CheckForNewMaster()
+Sub CheckForNewMaster( autoCloseNoUpdateDlg as Boolean )
     if ( getPrefs().getPrefValue( getConstants().pROKU_PASSWORD ) = "" ) then
         if ( ShowDialog2Buttons( "Roku Password Not Set", "You need to enter the password you entered for your Roku when you enabled development mode, would you like to do it now?", "Not Now", "Yes" ) = 2 ) then
             getYoutube().GeneralSettings()
         end if
         return
     end if
-    dialog = ShowPleaseWait( "Checking for a new development update..." )
+    dialog = ShowPleaseWait( "Checking for a channel update..." )
     manifestText = ReadAsciiFile( "pkg:/manifest" )
     manifestData = ParseManifestString( manifestText )
     if ( manifestData = invalid ) then
@@ -326,7 +346,13 @@ Sub CheckForNewMaster()
             end if
         else
             dialog.Close()
-            ShowDialog1Button( "Info", "No New Development Version Available", "Ok" )
+            if ( not( autoCloseNoUpdateDlg ) ) then
+                ShowDialog1Button( "Info", "No Update Available", "Ok" )
+            else
+                tmpDlg = ShowDialogNoButton( "No Update Available", "" )
+                sleep( 3000 )
+                tmpDlg.Close()
+            end if
         end if
     else
         dialog.Close()
@@ -454,6 +480,8 @@ Function getEnumValuesForType( prefType as String, enumType = invalid as Dynamic
             retVal = [ "Hot", "New", "Rising", "Top", "Controversial" ]
         else if ( enumType = constants.eREDDIT_FILTERS ) then
             retVal = [ "This Hour", "Today", "This Week", "This Year", "All Time" ]
+        else if ( enumType = constants.eAUTO_UPDATE_CHECK ) then
+            retVal = [ "Disabled", "New Releases Only", "Newest (Release OR Development)" ]
         else
             print "enum must have the enumType defined!"
         end if
@@ -474,6 +502,9 @@ Function getEnumValueForType( enumType as String, index as Integer ) as Object
         retVal = [ "Hot", "New", "Rising", "Top", "Controversial" ][index]
     else if ( enumType = constants.eREDDIT_FILTERS ) then
         retVal = [ "Hour", "Day", "Week", "Year", "All" ][index]
+    else if ( enumType = constants.eAUTO_UPDATE_CHECK ) then
+        ' Not used -- added for future use, maybe?
+        retVal = [ "Off", "Release", "Newest"][index]
     else
         print "enum must have the enumType defined!"
     end if
@@ -629,10 +660,11 @@ Function LoadConstants() as Object
     this.ENABLED_VALUE     = 0
     this.DISABLED_VALUE    = 1
     ' Enumeration type constants
-    this.eVID_QUALITY      = "vidQuality"
-    this.eENABLED_DISABLED = "enabledDisabled"
-    this.eREDDIT_QUERIES   = "redditQueryTypes"
+    this.eVID_QUALITY       = "vidQuality"
+    this.eENABLED_DISABLED  = "enabledDisabled"
+    this.eREDDIT_QUERIES    = "redditQueryTypes"
     this.eREDDIT_FILTERS    = "redditFilterTypes"
+    this.eAUTO_UPDATE_CHECK = "autoUpdateCheck"
 
     ' Property Keys
     this.pREDDIT_ENABLED    = "RedditEnabled"
@@ -640,6 +672,7 @@ Function LoadConstants() as Object
     this.pREDDIT_FEED       = "RedditFeed"
     this.pREDDIT_FILTER     = "RedditFilter"
     this.pROKU_PASSWORD     = "RokuPassword"
+    this.pAUTO_UPDATE       = "AutoUpdateCheck"
 
     ' Source strings
     this.sYOUTUBE           = "YouTube"
@@ -663,6 +696,11 @@ Function LoadConstants() as Object
     this.sRED_WEEK          = 2
     this.sRED_YEAR          = 3
     this.sRED_ALL           = 4
+
+    ' Auto Update Check Indices
+    this.sUPDATE_OFF        = 0
+    this.sUPDATE_REL        = 1
+    this.sUPDATE_NEW        = 2
 
     ' Success error codes
     this.ERR_NORMAL_END     = &hFC
