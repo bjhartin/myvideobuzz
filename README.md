@@ -22,7 +22,7 @@ address. Open up a standard web browser and visit the following URL:
 
     http://<rokuPlayer-ip-address> (for example, http://192.168.1.7)
 
-[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.7.2/MyVideoBuzz_v1_7_2.zip) and upload it to your Roku device.  
+[Download the source as a zip](https://github.com/Protuhj/myvideobuzz/releases/download/v1.7.3/MyVideoBuzz_v1_7_3.zip) and upload it to your Roku device.
 **Do not unzip this file! Upload the whole file to your Roku!**
 
 Due to limitations in the sandboxing of development Roku channels, you can only
@@ -32,7 +32,7 @@ have one development channel installed at a time.
 
 ### Alternative Installation Method - Windows users
 
-Download the whole repository [Here - Current Release: 1.7.2](https://github.com/Protuhj/myvideobuzz/archive/v1.7.2.zip)  
+Download the whole repository [Here - Current Release: 1.7.3](https://github.com/Protuhj/myvideobuzz/archive/v1.7.3.zip)  
 Unzip the file and edit the \deploy\rokus.txt file and add your Roku device(s) to the file, similar to this example:
 
     <Roku IP><space>rokudev:<rokupassword>
@@ -50,7 +50,7 @@ By doing this, you won't have to edit the rokus.txt in the future when updating 
 As of version 1.7.2, the channel supports auto-updating itself. That means, once the channel is installed, you can update it from within the channel itself.
 
 * There are three ways the channel can update itself:
-  1) A New Release (i.e. version is greater than the current version installed on your Roku, like 1.7.2 vs. 17.1).
+  1) A New Release (i.e. version is greater than the current version installed on your Roku, like 1.7.3 vs. 1.7.2).
   2) The current master (development) build has a newer version (major, minor, build #) than the currently installed version.
   3) Force the current latest release.
 
