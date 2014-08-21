@@ -595,7 +595,7 @@ Sub ManageSubreddits_impl()
         msg = wait(2000, port)
 
         if (type(msg) = "roSearchScreenEvent") then
-            'print "Event: "; msg.GetType(); " msg: "; msg.GetMessage()
+            print "Event: "; msg.GetType(); " msg: "; msg.GetMessage()
             if (msg.isScreenClosed()) then
                 exit while
             else if (msg.isPartialResult()) then
@@ -636,8 +636,8 @@ Sub ManageSubreddits_impl()
                         screen.SetSearchTerms( subredditArray )
                     end if
                 end if
-            'else
-                'print("Unhandled event on search screen")
+            else
+                print "Unhandled event on search screen Event: "; msg.GetType(); " msg: "; msg.GetMessage()
             end if
         else if (msg = invalid) then
             CheckForMCast()
