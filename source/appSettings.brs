@@ -46,6 +46,13 @@ Function LoadPreferences() as Object
         prefType: "enum",
         enumType: consts.eENABLED_DISABLED
         })
+    prefs.TwitchEnabled = createPref( { prefName: "Enable Twitch",
+        prefDesc: "Does the Twitch icon appear on the home screen?",
+        prefDefault: consts.ENABLED_VALUE,
+        prefKey: consts.pTWITCH_ENABLED,
+        prefType: "enum",
+        enumType: consts.eENABLED_DISABLED
+        })
 
     prefs.RedditFeed = createPref( { prefName: "Reddit Feed",
         prefDesc: "Which reddit feed to query?",
@@ -129,6 +136,12 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/General_Settings.png"
         },
         {
+            ShortDescriptionLine1:"Twitch",
+            ShortDescriptionLine2:"Settings for the Twitch channel.",
+            HDPosterUrl:"pkg:/images/twitch.jpg",
+            SDPosterUrl:"pkg:/images/twitch.jpg"
+        },
+        {
             ShortDescriptionLine1:"Reddit",
             ShortDescriptionLine2:"Settings for the reddit channel.",
             HDPosterUrl:"pkg:/images/reddit.jpg",
@@ -141,7 +154,7 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/About.jpg"
         }
     ]
-    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "RedditSettings", "About"]
+    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "TwitchSettings", "RedditSettings", "About"]
 
     uitkDoPosterMenu( settingmenu, screen, onselect )
 End Sub
@@ -668,6 +681,7 @@ Function LoadConstants() as Object
 
     ' Property Keys
     this.pREDDIT_ENABLED    = "RedditEnabled"
+    this.pTWITCH_ENABLED    = "TwitchEnabled"
     this.pVIDEO_QUALITY     = "VideoQuality"
     this.pREDDIT_FEED       = "RedditFeed"
     this.pREDDIT_FILTER     = "RedditFilter"
@@ -682,6 +696,7 @@ Function LoadConstants() as Object
     this.sLIVELEAK          = "LiveLeak"
     this.sVKONTAKTE         = "VKontakte"
     this.sVIDZI             = "Vidzi.tv"
+    this.sTWITCH            = "Twitch"
 
     ' Reddit Query Indices
     this.sRED_HOT           = 0

@@ -49,8 +49,7 @@ Sub ShowHomeScreen()
     prefs = getPrefs()
 
     menudata=[]
-    menudata.Push({ShortDescriptionLine1:"Twitch", ShortDescriptionLine2: "Browse videos from Twitch.tv", Custom: true, ViewFunc: ViewTwitch, HDPosterUrl:"pkg:/images/twitch.jpg", SDPosterUrl:"pkg:/images/twitch.jpg"})
-     if (ytusername<>invalid) and (isnonemptystr(ytusername)) then
+    if (ytusername<>invalid) and (isnonemptystr(ytusername)) then
         menudata.Push({ShortDescriptionLine1:"What to Watch", FeedURL:"users/" + ytusername + "/newsubscriptionvideos?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Playlists", FeedURL:"users/" + ytusername + "/playlists?v=2&max-results=50&safeSearch=none", categoryData:{ isPlaylist: true }, ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Subscriptions", FeedURL:"users/" + ytusername + "/subscriptions?v=2&max-results=50", categoryData:{ isPlaylist: false }, ShortDescriptionLine2:"Browse your Subscriptions", HDPosterUrl:"pkg:/images/YourSubscriptions.jpg", SDPosterUrl:"pkg:/images/YourSubscriptions.jpg"})
@@ -59,6 +58,11 @@ Sub ShowHomeScreen()
     menudata.Push({ShortDescriptionLine1:"History", OnClick:"ShowHistory", ShortDescriptionLine2:"View your history",  HDPosterUrl:"pkg:/images/History.png", SDPosterUrl:"pkg:/images/History.png"})
     menudata.Push({ShortDescriptionLine1:"Search", OnClick:"SearchYoutube", ShortDescriptionLine2:"Search YouTube for videos",  HDPosterUrl:"pkg:/images/Search.jpg", SDPosterUrl:"pkg:/images/Search.jpg"})
     menudata.Push({ShortDescriptionLine1:"Local Network", Custom: true, ViewFunc: CheckForLANVideos, categoryData:invalid, ShortDescriptionLine2:"View recent LAN videos", HDPosterUrl:"pkg:/images/LAN.jpg", SDPosterUrl:"pkg:/images/LAN.jpg"})
+
+    if ( prefs.getPrefValue( consts.pTWITCH_ENABLED ) = consts.ENABLED_VALUE ) then
+        menudata.Push({ShortDescriptionLine1:"Twitch", ShortDescriptionLine2: "Browse videos from Twitch.tv", Custom: true, ViewFunc: ViewTwitch, HDPosterUrl:"pkg:/images/twitch.jpg", SDPosterUrl:"pkg:/images/twitch.jpg"})
+    end if
+
     if ( prefs.getPrefValue( consts.pREDDIT_ENABLED ) = consts.ENABLED_VALUE ) then
         menudata.Push({ShortDescriptionLine1:"Reddit", ShortDescriptionLine2: "Browse videos from reddit", Custom: true, ViewFunc: ViewReddits, HDPosterUrl:"pkg:/images/reddit.jpg", SDPosterUrl:"pkg:/images/reddit.jpg"})
     end if

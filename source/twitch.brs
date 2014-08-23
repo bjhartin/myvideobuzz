@@ -40,7 +40,7 @@ Sub ViewTwitch(youtube as Object, urlToQuery = "https://api.twitch.tv/kraken/gam
             end if
             return set_idx
         end function]
-        uitkDoPosterMenu(gameList, screen, onselect)
+        uitkDoPosterMenu( gameList, screen, onselect )
     else
         ShowErrorDialog( "Error querying Twitch (Code: " + tostr( rsp.status ) + ")", "Twitch Error" )
     end if
@@ -79,7 +79,7 @@ Sub ViewTwitchStreams(gameName as String, urlToQuery = invalid as dynamic )
             end if
             return set_idx
         end function]
-        uitkDoPosterMenu(streamList, screen, onselect)
+        uitkDoPosterMenu( streamList, screen, onselect, onplay_callback_Twitch )
     else
         ShowErrorDialog( "Error querying Twitch (Code: " + tostr( rsp.status ) + ")", "Twitch Error" )
     end if
@@ -103,8 +103,8 @@ End Function
 
 Function newTwitchVideo( channel as String ) As Object
     result = QueryForJson( "http://api.twitch.tv/api/channels/" + channel + "/access_token?as3=t&allow_source=true" )
-    print "Sig: " ; result.json.sig
-    print "Token: " ; result.json.token
+    'print "Sig: " ; result.json.sig
+    'print "Token: " ; result.json.token
     'QueryForJson( "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token )'+ "&allow_source=true" )
     meta                   = {}
     meta["Author"]                 = channel
@@ -112,7 +112,7 @@ Function newTwitchVideo( channel as String ) As Object
     meta["Title"]                  = meta["Author"]
     meta["Actors"]                 = meta["Author"]
     meta["FullDescription"]        = "Live Stream"
-    meta["Description"]            = "Lame"
+    meta["Description"]            = "Twitch Live Stream"
     meta["Categories"]             = "Live Stream"
     meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
     meta["ShortDescriptionLine2"]  = meta["Title"]
@@ -123,10 +123,10 @@ Function newTwitchVideo( channel as String ) As Object
     meta["StreamFormat"]           = "hls"
     meta["Live"]                   = true
     meta["Streams"]                = []
-    meta["Source"]                 = "twitch"
+    meta["Source"]                 = getConstants().sTWITCH
     ' Set the PlayStart sufficiently large so it starts at 'Live' position
     meta["PlayStart"]              = 500000
-    meta["SwitchingStrategy"]      = "no-adaptation"
+    meta["SwitchingStrategy"]      = "full-adaptation"
     meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
     DisplayVideo(meta)
     return meta
@@ -140,11 +140,10 @@ End Function
 '******************************************************************************
 Function NewTwitchGameLink(jsonObject As Object) As Object
     game                   = {}
-
     game["ID"]                      = tostr( jsonObject.game._id )
     game["TitleSeason"]             = jsonObject.game.name
     game["Categories"]              = "Vidya Game"
-    game["Source"]                  = "Twitch"
+    game["Source"]                  = getConstants().sTWITCH
     game["Thumb"]                   = jsonObject.game.box.large
     game["ContentType"]             = "game"
     game["Title"]                   = "Viewers: " + tostr( jsonObject.viewers )
@@ -159,20 +158,18 @@ End Function
 
 '******************************************************************************
 ' Creates a video roAssociativeArray, with the appropriate members needed to set Content Metadata and play a video with
-' This function handles sites that require parsing a response for an MP4 URL (LiveLeak, Vine)
 ' @param jsonObject the JSON "data" object that was received in QueryForJson, this is one result of many
 ' @return an roAssociativeArray of metadata for the current result
 '******************************************************************************
 Function NewTwitchStreamLink(jsonObject As Object) As Object
     game                   = {}
-
     game["ID"]                      = jsonObject.channel.name
-    game["TitleSeason"]             = jsonObject.channel.display_name + " [Viewers: " + tostr( jsonObject.viewers ) + "]"
+    game["TitleSeason"]             = jsonObject.channel.display_name + " [Lang: " + UCase(jsonObject.channel.language) + "]"
     game["Categories"]              = jsonObject.game
-    game["Source"]                  = "Twitch"
+    game["Source"]                  = getConstants().sTWITCH
     game["Thumb"]                   = jsonObject.preview.large
     game["ContentType"]             = "game"
-    game["Title"]                   = jsonObject.channel.display_name
+    game["Title"]                   = jsonObject.channel.display_name + " [Viewers: " + tostr( jsonObject.viewers ) + "]"
     game["FullDescription"]         = ""
     game["Description"]             = jsonObject.channel.status
     game["ShortDescriptionLine1"]   = game["TitleSeason"]
@@ -181,3 +178,24 @@ Function NewTwitchStreamLink(jsonObject As Object) As Object
     game["HDPosterUrl"]             = jsonObject.preview.large
     return game
 End Function
+
+Sub EditTwitchSettings()
+    settingmenu = [
+        {
+            Title: "Show on Home Screen",
+            HDPosterUrl:"pkg:/images/twitch.jpg",
+            SDPosterUrl:"pkg:/images/twitch.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pTWITCH_ENABLED )
+        }
+    ]
+
+    uitkPreShowListMenu( m, settingmenu, "Twitch Preferences", "Preferences", "Twitch" )
+End Sub
+
+'********************************************************************
+' Callback function for when the user hits the play button from the Stream list for Twitch
+' @param theVideo the video metadata object that should be played.
+'********************************************************************
+Sub onplay_callback_Twitch(theVideo as Object)
+    newTwitchVideo( theVideo["ID"] )
+End Sub

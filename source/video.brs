@@ -61,6 +61,7 @@ Function InitYouTube() As Object
     this.About = youtube_about
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
+    this.TwitchSettings = EditTwitchSettings
     this.GeneralSettings = EditGeneralSettings
     this.ManageSubreddits = ManageSubreddits_impl
     this.ClearHistory = ClearHistory_impl
