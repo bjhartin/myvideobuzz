@@ -28,8 +28,7 @@ Function uitkPreShowPosterMenu( ListStyle="flat-category" as String, breadA = "H
     return screen
 end function
 
-
-Function uitkDoPosterMenu(posterdata, screen, onselect_callback = invalid, onplay_func = invalid) As Integer
+Function uitkDoPosterMenu( posterdata, screen, onselect_callback = invalid, onplay_func = invalid ) As Integer
     if (type(screen) <> "roPosterScreen") then
         'print "illegal type/value for screen passed to uitkDoPosterMenu()"
         return -1

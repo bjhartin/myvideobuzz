@@ -169,7 +169,7 @@ Function QueryReddit(multireddits = "videos" as String) As Object
         redditFilterType = LCase( firstValid( getEnumValueForType( getConstants().eREDDIT_FILTERS, prefs.getPrefValue( prefs.RedditFilter.key ) ), "All" ) )
         http = NewHttp("http://www.reddit.com/r/" + multireddits + "/" + redditQueryType + ".json?t=" + redditFilterType)
     end if
-    headers = { }
+    headers = {}
 
     http.method = method
     rsp = http.getToStringWithTimeout(10, headers)
@@ -637,7 +637,7 @@ Sub ManageSubreddits_impl()
                     end if
                 end if
             'else
-                'print("Unhandled event on search screen")
+            '    print "Unhandled event on search screen Event: "; msg.GetType(); " msg: "; msg.GetMessage()
             end if
         else if (msg = invalid) then
             CheckForMCast()
