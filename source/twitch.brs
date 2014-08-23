@@ -161,7 +161,11 @@ End Function
 Function NewTwitchStreamLink(jsonObject As Object) As Object
     game                   = {}
     game["ID"]                      = jsonObject.channel.name
-    game["TitleSeason"]             = jsonObject.channel.display_name + " [Lang: " + UCase(jsonObject.channel.language) + "]"
+    if ( jsonObject.channel.language <> invalid ) then
+        game["TitleSeason"] = jsonObject.channel.display_name + " [Lang: " + UCase(jsonObject.channel.language) + "]"
+    else
+        game["TitleSeason"] = jsonObject.channel.display_name
+    end if
     game["Categories"]              = jsonObject.game
     game["Source"]                  = getConstants().sTWITCH
     game["Thumb"]                   = jsonObject.preview.large
