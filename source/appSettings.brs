@@ -78,6 +78,14 @@ Function LoadPreferences() as Object
         enumType: consts.eAUTO_UPDATE_CHECK
         })
 
+    prefs.LanVideosEnabled = createPref( { prefName: "Enable LAN Videos",
+        prefDesc: "Does the LAN Videos icon appear on the home screen?",
+        prefDefault: consts.ENABLED_VALUE,
+        prefKey: consts.pLAN_VIDEOS_ENABLED,
+        prefType: "enum",
+        enumType: consts.eENABLED_DISABLED
+        })
+
     prefs.getPrefData  = getPrefData_impl
     prefs.getPrefValue = getPrefValue_impl
     prefs.setPrefValue = setPrefValue_impl
@@ -178,6 +186,12 @@ Sub EditGeneralSettings()
             HDPosterUrl:"pkg:/images/Settings.jpg",
             SDPosterUrl:"pkg:/images/Settings.jpg",
             prefData: getPrefs().getPrefData( getConstants().pAUTO_UPDATE )
+        },
+        {
+            Title: "Show LAN Videos on Home Screen",
+            HDPosterUrl:"pkg:/images/Settings.jpg",
+            SDPosterUrl:"pkg:/images/Settings.jpg",
+            prefData: getPrefs().getPrefData( getConstants().pLAN_VIDEOS_ENABLED )
         }
     ]
 
@@ -680,13 +694,14 @@ Function LoadConstants() as Object
     this.eAUTO_UPDATE_CHECK = "autoUpdateCheck"
 
     ' Property Keys
-    this.pREDDIT_ENABLED    = "RedditEnabled"
-    this.pTWITCH_ENABLED    = "TwitchEnabled"
-    this.pVIDEO_QUALITY     = "VideoQuality"
-    this.pREDDIT_FEED       = "RedditFeed"
-    this.pREDDIT_FILTER     = "RedditFilter"
-    this.pROKU_PASSWORD     = "RokuPassword"
-    this.pAUTO_UPDATE       = "AutoUpdateCheck"
+    this.pREDDIT_ENABLED        = "RedditEnabled"
+    this.pTWITCH_ENABLED        = "TwitchEnabled"
+    this.pVIDEO_QUALITY         = "VideoQuality"
+    this.pREDDIT_FEED           = "RedditFeed"
+    this.pREDDIT_FILTER         = "RedditFilter"
+    this.pROKU_PASSWORD         = "RokuPassword"
+    this.pAUTO_UPDATE           = "AutoUpdateCheck"
+    this.pLAN_VIDEOS_ENABLED    = "LanVideosEnabled"
 
     ' Source strings
     this.sYOUTUBE           = "YouTube"
