@@ -978,7 +978,7 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
     equalsRegex = CreateObject("roRegex", "%3D", "ig")
 
     if ( video["Source"] = getConstants().sGOOGLE_DRIVE ) then
-        urlEncodedRegex = CreateObject( "roRegex", Chr(34) + "url_encoded_fmt_stream_map" + Chr(34) + "\:" + Chr(34) + "([^(" + Chr(34) + "|&|$)]*)" + Chr(34), "ig" )
+        urlEncodedRegex = CreateObject( "roRegex", Chr(34) + "url_encoded_fmt_stream_map" + Chr(34) + "[\:,]" + Chr(34) + "([^(" + Chr(34) + "|&|$)]*)" + Chr(34), "ig" )
         commaRegex = CreateObject( "roRegex", ",", "g" )
         ampersandRegex = CreateObject( "roRegex", "\\u0026", "ig" )
         equalsRegex = CreateObject( "roRegex", "\\u003D", "ig" )
