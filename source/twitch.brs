@@ -124,7 +124,7 @@ Function newTwitchVideo( channel as String ) As Object
     ' Set the PlayStart sufficiently large so it starts at 'Live' position
     meta["PlayStart"]              = 500000
     meta["SwitchingStrategy"]      = "full-adaptation"
-    meta["Streams"].Push({url: "http://usher.twitch.tv/select/" + channel + ".json?nauthsig=" + result.json.sig +"&nauth=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
+    meta["Streams"].Push({url: "http://usher.twitch.tv/api/channel/hls/" + channel + ".m3u8?sig=" + result.json.sig +"&token=" + result.json.token + "&allow_source=true", bitrate: 0, quality: false, contentid: -1})
     DisplayVideo(meta)
     return meta
 End Function
