@@ -127,7 +127,7 @@ Sub youtube_browse_settings()
     settingmenu = [
         {
             ShortDescriptionLine1:"Add Account",
-            ShortDescriptionLine2:"Add your YouTube account",
+            ShortDescriptionLine2:"Manage your YouTube Account for the channel.",
             HDPosterUrl:"pkg:/images/icon_key.jpg",
             SDPosterUrl:"pkg:/images/icon_key.jpg"
         },
@@ -162,6 +162,7 @@ Sub youtube_browse_settings()
             SDPosterUrl:"pkg:/images/About.jpg"
         }
     ]
+    ' If you change the "AddAccount" name, make sure you update uitkDoPosterMenu
     onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "TwitchSettings", "RedditSettings", "About"]
 
     uitkDoPosterMenu( settingmenu, screen, onselect )
@@ -198,7 +199,7 @@ Sub EditGeneralSettings()
     uitkPreShowListMenu( m, settingmenu, "General Preferences", "Preferences", "General" )
 End Sub
 
-Sub youtube_add_account()
+Function youtube_add_account() as Boolean
     screen = CreateObject("roKeyboardScreen")
     port = CreateObject("roMessagePort")
     screen.SetMessagePort(port)
@@ -209,17 +210,18 @@ Sub youtube_add_account()
         screen.SetText(ytusername)
     end if
 
-    screen.SetDisplayText("Enter your YouTube User name (not email address)")
+    screen.SetDisplayText("Enter your YouTube Username (not email address)")
     screen.SetMaxLength(35)
     screen.AddButton(1, "Finished")
     screen.AddButton(2, "Help")
+    screen.AddButton(3, "Reset Username")
     screen.Show()
 
     while (true)
         msg = wait(0, screen.GetMessagePort())
         if (type(msg) = "roKeyboardScreenEvent") then
             if (msg.isScreenClosed()) then
-                return
+                return false
             else if (msg.isButtonPressed()) then
                 if (msg.GetIndex() = 1) then
                     searchText = screen.GetText()
@@ -229,16 +231,22 @@ Sub youtube_add_account()
                     else
                         RegWrite("YTUSERNAME1", searchText)
                         screen.Close()
-                        ShowHomeScreen()
-                        return
+                        return true
                     end if
-                else
+                else if (msg.GetIndex() = 2) then
                     ShowDialog1Button("Help", "Go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
+                else if (msg.GetIndex() = 3) then
+                    if (ShowDialog2Buttons("Confirmation", "Are you sure you want to reset your username?", "Not Now", "Yes") = 2) then
+                        RegDelete("YTUSERNAME1")
+                        screen.Close()
+                        return true
+                    end if
                 end if
             end if
         end if
     end while
-End Sub
+    return false
+End Function
 
 
 Sub youtube_about()

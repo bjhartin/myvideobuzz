@@ -4,6 +4,7 @@
 Function InitYouTube() As Object
     ' constructor
     this = CreateObject("roAssociativeArray")
+    this.home_screen = invalid
     this.device_id = CreateObject("roDeviceInfo").GetDeviceUniqueId()
     this.protocol = "http"
     this.scope = this.protocol + "://gdata.youtube.com"

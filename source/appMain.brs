@@ -38,13 +38,17 @@ Sub ShowHomeScreen()
     ytusername = RegRead("YTUSERNAME1", invalid)
     screen = uitkPreShowPosterMenu("flat-category", ytusername)
     if (screen = invalid) then
-        'print "unexpected error in uitkPreShowPosterMenu"
+        print "Failed to create the home screen!"
         return
     end if
 
     Init()
 
     youtube = getYoutube()
+    if (youtube.home_screen <> invalid) then
+        youtube.home_screen.close()
+        youtube.home_screen = invalid
+    end if
     consts = getConstants()
     prefs = getPrefs()
 
@@ -90,6 +94,7 @@ Sub ShowHomeScreen()
     else if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_NEW ) then
         CheckForNewMaster( true )
     end if
+    youtube.home_screen = screen
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub

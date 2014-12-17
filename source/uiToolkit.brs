@@ -73,6 +73,13 @@ Function uitkDoPosterMenu( posterdata, screen, onselect_callback = invalid, onpl
                         else
                             if (selected_callback = "return") then
                                 return msg.GetIndex()
+                            else if (selected_callback = "AddAccount") then
+                                if (this[selected_callback]() = true) then
+                                    screen.close()
+                                    ShowHomeScreen()
+                                    ' Return value seems to be unused
+                                    return 0
+                                end if
                             else
                                 this[selected_callback]()
                             end if
