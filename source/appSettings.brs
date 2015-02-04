@@ -157,13 +157,19 @@ Sub youtube_browse_settings()
         },
         {
             ShortDescriptionLine1:"About",
-            ShortDescriptionLine2:"About the channel",
+            ShortDescriptionLine2:"About the channel.",
             HDPosterUrl:"pkg:/images/About.jpg",
             SDPosterUrl:"pkg:/images/About.jpg"
+        },
+        {
+            ShortDescriptionLine1:"What's new?",
+            ShortDescriptionLine2:"View the channel's changelog.",
+            HDPosterUrl:"pkg:/images/whatsnew.jpg",
+            SDPosterUrl:"pkg:/images/whatsnew.jpg"
         }
     ]
     ' If you change the "AddAccount" name, make sure you update uitkDoPosterMenu
-    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "TwitchSettings", "RedditSettings", "About"]
+    onselect = [0, m, "AddAccount", "ClearHistory", "GeneralSettings", "TwitchSettings", "RedditSettings", "About", "WhatsNew"]
 
     uitkDoPosterMenu( settingmenu, screen, onselect )
 End Sub
@@ -249,7 +255,7 @@ Function youtube_add_account() as Boolean
 End Function
 
 
-Sub youtube_about()
+Sub aboutVideobuzz()
     port = CreateObject("roMessagePort")
     screen = CreateObject("roParagraphScreen")
     screen.SetMessagePort(port)
@@ -471,6 +477,15 @@ Function isRemoteManifestNewer( remoteManifestData as Object, localManifestData 
     return retVal
 End Function
 
+Sub whatsNew()
+    port = CreateObject("roMessagePort")
+    screen = CreateObject("roParagraphScreen")
+    screen.SetMessagePort(port)
+    changelogText = ReadAsciiFile( "pkg:/changelog.txt" )
+
+    uitkTextScreen( "What's New", "Changelog", changelogText, false)
+End Sub
+
 Sub ClearHistory_impl( showDialog = true as Boolean )
     RegDelete( "videos", "history" )
     m.history.Clear()
@@ -657,6 +672,7 @@ Function DoUpdate( strLocation as String ) as Integer
                         ret = bytes.AppendFile( "tmp:/tempText.req" )
                         ret = boundaryBytes.AppendFile( "tmp:/tempText.req" )
                         fs.Delete( "tmp:/temp.zip" )
+                        RegWrite("updatePending", "true")
                         ret = ut2.AsyncPostFromFile( "tmp:/tempText.req" )
                         fs.Delete( "tmp:/tempText.req" )
                     else

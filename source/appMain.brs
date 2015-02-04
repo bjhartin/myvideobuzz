@@ -89,10 +89,26 @@ Sub ShowHomeScreen()
             return set_idx
         end function]
     MulticastInit(youtube)
-    if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_REL ) then
-        CheckForNewRelease( true )
-    else if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_NEW ) then
-        CheckForNewMaster( true )
+    ' If "updatePending" exists in the registry, then we are booting from the update process (hopefully).
+    updatePending = RegRead("updatePending")
+    if ( updatePending = invalid ) then
+        if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_REL ) then
+            CheckForNewRelease( true )
+        else if ( prefs.getPrefValue( consts.pAUTO_UPDATE ) = consts.sUPDATE_NEW ) then
+            CheckForNewMaster( true )
+        end if
+    else
+        RegDelete("updatePending")
+        versionStr = consts.VERSION_STR
+
+        manifestText = ReadAsciiFile( "pkg:/manifest" )
+        manifestData = ParseManifestString( manifestText )
+        if ( manifestData <> invalid ) then
+            versionStr = manifestData.versionStr
+        end if
+        if ( ShowDialog2Buttons( "Update Complete", "Successfully updated to version " + versionStr +". Would you like to view what's new?", "Not Now", "Yes" ) = 2 ) then
+            youtube.WhatsNew()
+        end if
     end if
     youtube.home_screen = screen
     uitkDoPosterMenu(menudata, screen, onselect)

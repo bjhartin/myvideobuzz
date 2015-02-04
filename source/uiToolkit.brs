@@ -284,10 +284,12 @@ Function determinePageEnd( start% as Integer, text as String ) as Integer
     end if
 End Function
 
-Sub uitkTextScreen( title as String, headerText as String, text as String )
+Sub uitkTextScreen( title as String, headerText as String, text as String, showTitleText as Boolean )
     regexNL = CreateObject( "roRegex", "\n{3,}", "ig" )
+    regexCR = CreateObject( "roRegex", "\r", "ig" )
     port = CreateObject( "roMessagePort" )
     text = regexNL.ReplaceAll( text, Chr(10) + Chr(10) )
+    text = regexCR.ReplaceAll( text, "" )
 
     continueLoop = true
     curPage% = 0
@@ -306,7 +308,11 @@ Sub uitkTextScreen( title as String, headerText as String, text as String )
         screen = CreateObject( "roParagraphScreen" )
         screen.SetMessagePort( port )
         screen.SetTitle( title )
-        screen.AddParagraph( "Title: " + headerText )
+        if (showTitleText) then
+            screen.AddParagraph( "Title: " + headerText )
+        else
+            screen.AddParagraph( headerText )
+        end if
 
         if ( maxPages% > 1 ) then
             if ( curPage% = (maxPages% - 1) ) then
@@ -694,7 +700,7 @@ Function VListOptionDialog( showReverse as Boolean, videoObj as Object, isReddit
                     if ( videoObj["FullDescription"] <> invalid ) then
                         descr = videoObj["FullDescription"]
                     end if
-                    uitkTextScreen( "Full Description", videoObj["TitleSeason"], descr )
+                    uitkTextScreen( "Full Description", videoObj["TitleSeason"], descr, true )
                     return 0
                 else if ( buttonPressed = playlistId ) then ' View Playlist
                     plId = firstValid( videoObj[ "PlaylistID" ], invalid )

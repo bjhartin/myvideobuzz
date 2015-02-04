@@ -59,7 +59,8 @@ Function InitYouTube() As Object
 
     'Settings
     this.BrowseSettings = youtube_browse_settings
-    this.About = youtube_about
+    this.About = aboutVideobuzz
+    this.WhatsNew = whatsNew
     this.AddAccount = youtube_add_account
     this.RedditSettings = EditRedditSettings
     this.TwitchSettings = EditTwitchSettings
