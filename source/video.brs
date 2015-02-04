@@ -1465,7 +1465,13 @@ End Function
 ' Shows Users Video History
 '********************************************************************
 Sub ShowHistory_impl()
-    m.DisplayVideoListFromMetadataList(m.history, "History", invalid, invalid, invalid)
+    ' Copy the history so it doesn't get updated when a video is played from this screen.
+    ' Basically a 'snapshot' of the history at the time the screen was opened.
+    historyCopy = []
+    for each vid in m.history
+        historyCopy.push( vid )
+    end for
+    m.DisplayVideoListFromMetadataList(historyCopy, "History", invalid, invalid, invalid)
 End Sub
 
 '********************************************************************
