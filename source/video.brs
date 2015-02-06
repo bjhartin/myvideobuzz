@@ -954,7 +954,7 @@ Function DisplayVideo(content As Object)
     return ret
 End Function
 
-Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie = "" as String) as Object
+Function getYouTubeMP4Url(video as Object, retryCount = 0 as Integer, timeout = 0 as Integer, loginCookie = "" as String) as Object
     video["Streams"].Clear()
     isSSL = false
     if (Left(LCase(video["ID"]), 4) = "http") then
@@ -962,8 +962,10 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
         if ( Left( LCase( url ), 5) = "https" ) then
             isSSL = true
         end if
-    else
+    else if (retryCount = 0)
         url = "http://www.youtube.com/get_video_info?el=detailpage&video_id=" + video["ID"]
+    else if (retryCount = 1)
+        url = "http://www.youtube.com/get_video_info?video_id=" + video["ID"] + "&eurl=https://youtube.googleapis.com/v/" + video["ID"] + "&sts=158"
     end if
     constants = getConstants()
     port = CreateObject("roMessagePort")
@@ -1100,7 +1102,12 @@ Function getYouTubeMP4Url(video as Object, timeout = 0 as Integer, loginCookie =
 
         end if
     else
-        print ("Nothing in urlEncodedFmtStreamMap")
+        if ( retryCount < 1 ) then
+            print ( "Nothing in urlEncodedFmtStreamMap, retrying with different URL." )
+            return getYouTubeMP4Url(video, 1)
+        else
+            print ( "Retries exceeded, giving up!" )
+        end if
     end if
     return video["Streams"]
 End Function

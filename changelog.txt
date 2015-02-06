@@ -1,3 +1,6 @@
+Version 1.7 Build 310
+    - Fixed issue #98 - Age-restricted videos were unable to be played.
+
 Version 1.7 Build 309
     - Fixed issue #97 - Playing the wrong video from the 'History' screen.
 
