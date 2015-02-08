@@ -115,13 +115,15 @@ Sub ShowHomeScreen()
     ' Code to test specific video IDs
     ' Each of these is age-restricted.
     'ids = []
+    'https://www.youtube.com/watch?v=PRZjnGUGXBI
+    'ids.push("PRZjnGUGXBI") ' VEVO turd
     'ids.push("1EROmqidZQc")
     'ids.push("kP8O-MOqmcw")
     'ids.push("nje6dcArZrI")
     'ids.push("UMyoCr2MnpM")
     'ids.push("5_yOGBzBTdc")
     'youtube.ExecBatchQuery( batch_request_xml( ids ) )
-    
+
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub

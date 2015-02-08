@@ -1,11 +1,11 @@
+Version 1.7 Build 311
+    - Worked on issue #21 - VEVO music videos should now work!!
+    - These videos will take a little longer to load.
+    - Please report any issues as they appear in the subreddit, or on Facebook.
+    - Or e-mail me: protuhj@gmail.com
+
 Version 1.7 Build 310
     - Fixed issue #98 - Age-restricted videos were unable to be played.
 
 Version 1.7 Build 309
     - Fixed issue #97 - Playing the wrong video from the 'History' screen.
-
-Version 1.7 Build 308
-    - Added a check at boot to allow the user to display this screen, if an update was completed.
-
-Version 1.7 Build 307
-    - Added the "What's New" screen to give a short description of changes for each version.

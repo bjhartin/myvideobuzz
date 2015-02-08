@@ -4,6 +4,8 @@
 Function InitYouTube() As Object
     ' constructor
     this = CreateObject("roAssociativeArray")
+    this.funcmap = invalid
+    this.JSUrl = ""
     this.home_screen = invalid
     this.device_id = CreateObject("roDeviceInfo").GetDeviceUniqueId()
     this.protocol = "http"
@@ -114,6 +116,25 @@ Function InitYouTube() As Object
     this.regexTimestampHours = CreateObject( "roRegex", "(\d+)h+", "i" )
     this.regexTimestampMinutes = CreateObject( "roRegex", "(\d+)m+", "i" )
     this.regexTimestampSeconds = CreateObject( "roRegex", "(\d+)s+", "i" )
+
+    patterns = {}
+    ' patterns.split_or_join = CreateObject( "roRegex", "(\w+)=\1\.(?:split|join)\(" + Quote() + "" + Quote() + ")$", "" )
+    patterns.func_call = CreateObject( "roRegex", "(\w+)=([$\w]+)\(((?:\w+,?)+)\)$", "")
+    patterns.split_or_join = CreateObject( "roRegex", "(\w+)=\1\.(?:split|join)\(" + Quote() + Quote() + "\)$", "")
+    patterns.x1 =  CreateObject( "roRegex", "var\s(\w+)=(\w+)\[(\w+)\]$", "" )
+    patterns.x2 = CreateObject( "roRegex", "(\w+)\[(\w+)\]=(\w+)\[(\w+)\%(\w+)\.length\]$", "" )
+    patterns.x3 =  CreateObject( "roRegex", "(\w+)\[(\w+)\]=(\w+)$", "" )
+    patterns.ret = CreateObject( "roRegex", "return (\w+)(\.join\(" + Quote() + Quote() + "\))?$", "" )
+    patterns.reverse =  CreateObject( "roRegex", "(\w+)=(\w+)\.reverse\(\)$", "" )
+    patterns.reverse_noass = CreateObject( "roRegex", "(\w+)\.reverse\(\)$", "" )
+    patterns.return_reverse = CreateObject( "roRegex", "return (\w+)\.reverse\(\)$", "" )
+    patterns.slice = CreateObject( "roRegex", "(\w+)=(\w+)\.slice\((\w+)\)$", "" )
+    patterns.splice_noass = CreateObject( "roRegex", "([$\w]+)\.splice\(([$\w]+)\,([$\w]+)\)$", "" )
+    patterns.return_slice = CreateObject( "roRegex", "return (\w+)\.slice\((\w+)\)$", "" )
+    patterns.func_call_dict = CreateObject( "roRegex", "(\w)=([$\w]+)\.(?!slice|splice|reverse)([$\w]+)\(((?:\w+,?)+)\)$","" )
+    patterns.func_call_dict_noret = CreateObject( "roRegex", "([$\w]+)\.(?!slice|splice|reverse)([$\w]+)\(((?:\w+,?)+)\)$", "" )
+    
+    this.patterns = patterns
 
     ' Should playlists be queried for their reversed order? Default is false
     this.reversed_playlist = false
@@ -992,7 +1013,7 @@ Function getYouTubeMP4Url(video as Object, retryCount = 0 as Integer, timeout = 
 
     prefs = getPrefs()
     videoQualityPref = prefs.getPrefValue( constants.pVIDEO_QUALITY )
-
+    getJSUrl = true
     if (urlEncodedFmtStreamMap.Count() > 1) then
         if (not(strTrim(urlEncodedFmtStreamMap[1]) = "")) then
             commaSplit = commaRegex.Split( urlEncodedFmtStreamMap[1] )
@@ -1016,10 +1037,27 @@ Function getYouTubeMP4Url(video as Object, retryCount = 0 as Integer, timeout = 
                 end for
                 'printAA( pair )
                 if (pair.url <> "" and Left(LCase(pair.url), 4) = "http") then
-                    if (pair.sig <> "") then
-                        signature = "&signature=" + pair.sig
+                    signature = ""
+                    if ( pair.s <> invalid AND pair.s <> "" ) then
+                        if ( getJSUrl = true ) then
+                            functionMap = get_js_sm( video["ID"] )
+                            getJSUrl = false
+                        else
+                            functionMap = getYoutube().funcmap
+                        end if
+                        if ( functionMap <> invalid ) then
+                            getYoutube().funcmap = functionMap
+                            newSig = decodesig( pair.s )
+                            if ( newSig <> invalid ) then
+                                signature = "&signature=" + newSig
+                            end if
+                        end if
                     else
-                        signature = ""
+                        if (pair.sig <> "") then
+                            signature = "&signature=" + pair.sig
+                        else
+                            signature = ""
+                        end if
                     end if
                     urlDecoded = URLDecode(URLDecode(pair.url + signature))
                     itag% = strtoi( pair.itag )
