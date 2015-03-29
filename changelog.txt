@@ -1,11 +1,12 @@
+Note: There may be service interruptions around 20 April, 2015, as YouTube is removing access to the current API.
+See the subreddit for more information.
+
+Version 1.7 Build 400
+    - Official Release version 1.7.4.
+    - No significant changes over version 1.7.311.
+
 Version 1.7 Build 311
     - Worked on issue #21 - VEVO music videos should now work!!
     - These videos will take a little longer to load.
     - Please report any issues as they appear in the subreddit, or on Facebook.
     - Or e-mail me: protuhj@gmail.com
-
-Version 1.7 Build 310
-    - Fixed issue #98 - Age-restricted videos were unable to be played.
-
-Version 1.7 Build 309
-    - Fixed issue #97 - Playing the wrong video from the 'History' screen.
