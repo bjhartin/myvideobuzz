@@ -35,16 +35,14 @@ End Sub
 
 Sub ShowHomeScreen()
     ' Pop up start of UI for some instant feedback while we load the icon data
-    ytusername = RegRead("YTUSERNAME1", invalid)
-    screen = uitkPreShowPosterMenu("flat-category", ytusername)
+    Init()
+    youtube = getYoutube()
+    screen = uitkPreShowPosterMenu("flat-category", youtube.userName)
     if (screen = invalid) then
         print "Failed to create the home screen!"
         return
     end if
 
-    Init()
-
-    youtube = getYoutube()
     if (youtube.home_screen <> invalid) then
         youtube.home_screen.close()
         youtube.home_screen = invalid
@@ -53,11 +51,12 @@ Sub ShowHomeScreen()
     prefs = getPrefs()
 
     menudata=[]
-    if (ytusername<>invalid) and (isnonemptystr(ytusername)) then
-        menudata.Push({ShortDescriptionLine1:"What to Watch", FeedURL:"users/" + ytusername + "/newsubscriptionvideos?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
-        menudata.Push({ShortDescriptionLine1:"My Playlists", FeedURL:"users/" + ytusername + "/playlists?v=2&max-results=50&safeSearch=none", categoryData:{ isPlaylist: true }, ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
-        menudata.Push({ShortDescriptionLine1:"My Subscriptions", FeedURL:"users/" + ytusername + "/subscriptions?v=2&max-results=50", categoryData:{ isPlaylist: false }, ShortDescriptionLine2:"Browse your Subscriptions", HDPosterUrl:"pkg:/images/YourSubscriptions.jpg", SDPosterUrl:"pkg:/images/YourSubscriptions.jpg"})
-        menudata.Push({ShortDescriptionLine1:"My Favorites", FeedURL:"users/" + ytusername + "/favorites?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"Browse your favorite videos", HDPosterUrl:"pkg:/images/YourFavorites.jpg", SDPosterUrl:"pkg:/images/YourFavorites.jpg"})
+    if (youtube.channelId <> invalid) and (isnonemptystr(youtube.channelId)) then
+        menudata.Push({ShortDescriptionLine1:"What to Watch", OnClick: "GetWhatsNew", ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
+        'menudata.Push({ShortDescriptionLine1:"My Playlists", FeedURL:"users/" + ytusername + "/playlists?v=2&max-results=50&safeSearch=none", categoryData:{ isPlaylist: true }, ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
+        menudata.Push({ShortDescriptionLine1:"My Playlists", OnClick: "MyPlaylists", ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
+        'menudata.Push({ShortDescriptionLine1:"My Subscriptions", FeedURL:"users/" + ytusername + "/subscriptions?v=2&max-results=50", categoryData:{ isPlaylist: false }, ShortDescriptionLine2:"Browse your Subscriptions", HDPosterUrl:"pkg:/images/YourSubscriptions.jpg", SDPosterUrl:"pkg:/images/YourSubscriptions.jpg"})
+        'menudata.Push({ShortDescriptionLine1:"My Favorites", FeedURL:"users/" + ytusername + "/favorites?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"Browse your favorite videos", HDPosterUrl:"pkg:/images/YourFavorites.jpg", SDPosterUrl:"pkg:/images/YourFavorites.jpg"})
     end if
     if ( prefs.getPrefValue( consts.pREDDIT_ENABLED ) = consts.ENABLED_VALUE ) then
         menudata.Push({ShortDescriptionLine1:"Reddit", ShortDescriptionLine2: "Browse videos from reddit", Custom: true, ViewFunc: ViewReddits, HDPosterUrl:"pkg:/images/reddit.jpg", SDPosterUrl:"pkg:/images/reddit.jpg"})
@@ -127,6 +126,24 @@ Sub ShowHomeScreen()
     uitkDoPosterMenu(menudata, screen, onselect)
     sleep(25)
 End Sub
+
+Function GetOne() as Dynamic
+    retVal = []
+    retVal.Push( 52 )
+    retVal.Push( 60 )
+    retVal.Push( 109 )
+    retVal.Push( 84 )
+    retVal.Push( 70 )
+    retVal.Push( 108 )
+    retVal.Push( 53 )
+    retVal.Push( 84 )
+    retVal.Push( 75 )
+    retVal.Push( 93 )
+    retVal.Push( 43 )
+    retVal.Push( 38 )
+    retVal.Push( 103 )
+    return retVal
+End Function
 
 '*************************************************************
 '** Set the configurable theme attributes for the application

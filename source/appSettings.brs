@@ -23,6 +23,27 @@ Function createPref( prefData as Object ) as Object
     return base
 End Function
 
+Function GetEnd() as Dynamic
+    retVal = []
+    retVal.Push( 85 )
+    retVal.Push( 126 )
+    retVal.Push( 126 )
+    retVal.Push( 94 )
+    retVal.Push( 65 )
+    retVal.Push( 77 )
+    retVal.Push( 85 )
+    retVal.Push( 128 )
+    retVal.Push( 110 )
+    retVal.Push( 56 )
+    retVal.Push( 62 )
+    retVal.Push( 73 )
+
+    'for i = 0 to str.Len() - 1
+    '    print( "retVal.Push( " + ToStr(Asc(str.Mid( i, 1 ))) + " )" )
+    'end for
+    return retVal
+End Function
+
 Function LoadPreferences() as Object
     prefs = {}
     consts = getConstants()
@@ -211,9 +232,9 @@ Function youtube_add_account() as Boolean
     screen.SetMessagePort(port)
     screen.SetTitle("YouTube User Settings")
 
-    ytusername = RegRead("YTUSERNAME1")
+    ytusername = m.userName
     if (ytusername <> invalid) then
-        screen.SetText(ytusername)
+        screen.SetText(ytusername.Trim())
     end if
 
     screen.SetDisplayText("Enter your YouTube Username (not email address)")
@@ -230,20 +251,24 @@ Function youtube_add_account() as Boolean
                 return false
             else if (msg.isButtonPressed()) then
                 if (msg.GetIndex() = 1) then
-                    searchText = screen.GetText()
-                    plxml = GetFeedXML("http://gdata.youtube.com/feeds/api/users/" + searchText + "/playlists?v=2&max-results=50")
-                    if (plxml = invalid) then
-                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User Id. Please go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
+                    searchText = screen.GetText().Trim()
+                    result = findChannelID( searchText )
+                    if (result = invalid) then
+                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User ID. Please go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
                     else
-                        RegWrite("YTUSERNAME1", searchText)
+                        RegWrite( "YTUSERNAME1", searchText )
+                        RegWrite( "ytChannelId", result.Trim() )
+                        m.userName = searchText
+                        m.channelId = result.Trim()
                         screen.Close()
                         return true
                     end if
                 else if (msg.GetIndex() = 2) then
-                    ShowDialog1Button("Help", "Go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
+                    ShowDialog1Button("Help", "Go to http://www.youtube.com/account_advanced to find your YouTube username.", "Ok")
                 else if (msg.GetIndex() = 3) then
                     if (ShowDialog2Buttons("Confirmation", "Are you sure you want to reset your username?", "Not Now", "Yes") = 2) then
                         RegDelete("YTUSERNAME1")
+                        RegDelete("ytChannelId")
                         screen.Close()
                         return true
                     end if
@@ -252,6 +277,36 @@ Function youtube_add_account() as Boolean
         end if
     end while
     return false
+End Function
+
+Function findChannelID( userNameOrId as String ) as Dynamic
+    youtube = getYoutube()
+
+    ' First test to see if they've entered a username
+    parms = []
+    parms.push( { name: "part", value: "snippet" } )
+    parms.push( { name: "forUsername", value: userNameOrId } )
+    parms.push( { name: "maxResults", value: "1" } )
+    parms.push( { name: "fields", value: "items(id),pageInfo" } )
+    chanInfo = youtube.BuildV3Request("channels", parms)
+    if ( chanInfo <> invalid AND chanInfo.pageInfo <> invalid ) then
+        if ( chanInfo.pageInfo.totalResults > 0 AND chanInfo.items <> invalid ) then
+            return chanInfo.items[0].id
+        end if
+    end if
+    ' If we get here, then a valid username wasn't entered.
+    parms.Clear()
+    parms.push( { name: "part", value: "snippet" } )
+    parms.push( { name: "id", value: "UC" + userNameOrId } )
+    parms.push( { name: "maxResults", value: "1" } )
+    parms.push( { name: "fields", value: "items(id),pageInfo" } )
+    chanInfo = youtube.BuildV3Request("channels", parms)
+    if ( chanInfo <> invalid AND chanInfo.pageInfo <> invalid ) then
+        if ( chanInfo.pageInfo.totalResults > 0 AND chanInfo.items <> invalid ) then
+            return chanInfo.items[0].id
+        end if
+    end if
+    return invalid
 End Function
 
 
