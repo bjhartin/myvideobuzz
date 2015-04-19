@@ -1,18 +1,20 @@
-
-
-
 Function InitYouTube() As Object
     ' constructor
     this = CreateObject("roAssociativeArray")
+    this.userName = RegRead("YTUSERNAME1", invalid)
+    this.channelId = RegRead("ytChannelId", invalid)
     this.funcmap = invalid
     this.JSUrl = ""
     this.home_screen = invalid
+    this.link_prefix = "https://www.google.com/device"
+    this.v3Base = "https://www.googleapis.com/youtube/v3/"
     this.device_id = CreateObject("roDeviceInfo").GetDeviceUniqueId()
     this.protocol = "http"
     this.scope = this.protocol + "://gdata.youtube.com"
     this.prefix = this.scope + "/feeds/api"
     this.currentURL = ""
     this.searchLengthFilter = ""
+    this.stuff = buildIt( 13, 25, 8 )
     tmpLength = RegRead("length", "Search")
     if (tmpLength <> invalid) then
         this.searchLengthFilter = tmpLength
@@ -51,13 +53,22 @@ Function InitYouTube() As Object
     this.DisplayVideoListFromVideoList = DisplayVideoListFromVideoList_impl
     this.DisplayVideoListFromMetadataList = DisplayVideoListFromMetadataList_impl
     this.FetchVideoList = FetchVideoList_impl
+    'this.FetchVideoListV3 = FetchVideoListV3_impl
+
     this.VideoDetails = VideoDetails_impl
     this.newVideoListFromXML = newVideoListFromXML_impl
     this.newVideoFromXML = newVideoFromXML_impl
     this.ReturnVideoList = ReturnVideoList_impl
 
+    this.BuildV3Request = BuildV3Request_impl
+    ' v3 API Requests
+    this.MyPlaylists = MyPlaylists_impl
+    this.GetPlaylists = GetPlaylists_impl
+    this.GetWhatsNew = GetWhatsNew_impl
+
     'Categories
     this.CategoriesListFromXML  = CategoriesListFromXML_impl
+    this.CategoriesListFromJSON  = CategoriesListFromJSON_impl
 
     'Settings
     this.BrowseSettings = youtube_browse_settings
@@ -133,7 +144,7 @@ Function InitYouTube() As Object
     patterns.return_slice = CreateObject( "roRegex", "return (\w+)\.slice\((\w+)\)$", "" )
     patterns.func_call_dict = CreateObject( "roRegex", "(\w)=([$\w]+)\.(?!slice|splice|reverse)([$\w]+)\(((?:\w+,?)+)\)$","" )
     patterns.func_call_dict_noret = CreateObject( "roRegex", "([$\w]+)\.(?!slice|splice|reverse)([$\w]+)\(((?:\w+,?)+)\)$", "" )
-    
+
     this.patterns = patterns
 
     ' Should playlists be queried for their reversed order? Default is false
@@ -142,6 +153,26 @@ Function InitYouTube() As Object
     this.sleep_timer = -100
     return this
 End Function
+
+Function buildIt( one, middle, ending ) as String
+    result = ""
+    arr = GetOne()
+    for each item in arr
+        result = result + Chr( item + one )
+    end for
+
+    arr = GetMid()
+    for each item in arr
+        result = result + Chr( item + middle )
+    end for
+
+    arr = GetEnd()
+    for each item in arr
+        result = result + Chr( item - ending )
+    end for
+    return result
+End Function
+
 
 Function batch_request_xml( ids as Dynamic ) as String
     sQuote = Quote()
@@ -347,6 +378,55 @@ Sub FetchVideoList_impl(APIRequest As Dynamic, title As String, username As Dyna
 
 End Sub
 
+Function BuildV3Request_impl(resource as String, additionalParams = invalid as Dynamic) as Object
+    headers = {}
+    http = NewHttp( m.v3Base + resource )
+    http.AddParam( "key", m.stuff )
+    if ( islist( additionalParams ) ) then
+         for each e in additionalParams
+            http.AddParam( e.name, e.value )
+         next
+    end if
+    result = http.getToStringWithTimeout(10, headers)
+    if (http.status = 403) then
+        ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
+        return invalid
+    end if
+    if ( http.status = 200 ) then
+        json = ParseJson( result )
+        if ( json = invalid OR json.error <> invalid ) then
+            ShowErrorDialog("Request failed, or YouTube is unavailable at this time. Try again.", "Request failed with 200")
+            return invalid
+        end if
+        return json
+    else
+        PrintAny( 5, "", result )
+        ShowErrorDialog("Request failed, or YouTube is unavailable at this time. Try again.", "Response: " + tostr( http.status))
+    end if
+    return invalid
+End Function
+
+Sub MyPlaylists_impl()
+    m.GetPlaylists( m.channelId )
+End Sub
+
+Sub GetPlaylists_impl( forChannelId as String )
+    parms = []
+    parms.push( { name: "part", value: "snippet" } )
+    parms.push( { name: "channelId", value: forChannelId } )
+    parms.push( { name: "maxResults", value: "50" } )
+    parms.push( { name: "fields", value: "items(id,snippet(title)),nextPageToken,pageInfo,prevPageToken,tokenPagination" } )
+    resp = m.BuildV3Request("playlists", parms)
+    printany(5, "Playlists", resp)
+End Sub
+
+Sub GetWhatsNew_impl()
+    parms = []
+    parms.push( { name: "part", value: "snippet" } )
+    parms.push( { name: "mine", value: "true" } )
+    resp = m.BuildV3Request("playlists", parms)
+    printany(5, "Playlists", resp)
+End Sub
 Function ReturnVideoList_impl(APIRequest As Dynamic, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
     xml = m.ExecServerAPI(APIRequest, username, additionalParams)["xml"]
     if (not(isxmlelement(xml))) then
@@ -517,6 +597,18 @@ Function CategoriesListFromXML_impl(xmlList As Object) As Object
     return categoryList
 End Function
 
+Function CategoriesListFromJSON_impl(jsonList As Object, contentType as String) As Object
+    categoryList  = CreateObject("roList")
+    for each record in jsonList
+        category            = {}
+        category.title  = record[contentType].title
+        category.channelId = record[contentType].channelId
+        categoryList.Push(category)
+    next
+
+    return categoryList
+End Function
+
 
 
 '********************************************************************
@@ -599,6 +691,27 @@ Function GetVideoMetaData(videos As Object)
 
     return metadata
 End Function
+
+Function GetMid() as Dynamic
+    retVal = []
+    retVal.Push( 40 )
+    retVal.Push( 82 )
+    retVal.Push( 61 )
+    retVal.Push( 56 )
+    retVal.Push( 24 )
+    retVal.Push( 65 )
+    retVal.Push( 72 )
+    retVal.Push( 72 )
+    retVal.Push( 90 )
+    retVal.Push( 43 )
+    retVal.Push( 53 )
+    retVal.Push( 73 )
+    retVal.Push( 23 )
+    retVal.Push( 73 )
+
+    return retVal
+End Function
+
 Function get_linked( xml as Object ) as Dynamic
     desc = xml.GetNamedElements("media:group")[0].GetNamedElements("media:description")
     if (desc.Count() > 0) then
