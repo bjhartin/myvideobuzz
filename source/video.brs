@@ -47,9 +47,6 @@ Function InitYouTube() As Object
     ' Playlists
     this.BrowseUserPlaylists = BrowseUserPlaylists_impl
 
-    'related
-    this.ShowRelatedVideos = youtube_related_videos
-
     'Videos
     this.DisplayVideoListFromVideoList = DisplayVideoListFromVideoList_impl
     this.DisplayVideoListFromMetadataList = DisplayVideoListFromMetadataList_impl
@@ -316,14 +313,7 @@ End Sub
 ' YouTube User Playlists
 '********************************************************************
 Sub BrowseUserPlaylists_impl(username As String, userID As String)
-    m.FetchVideoList( "users/" + userID + "/playlists?max-results=50&safeSearch=none", username + "'s Playlists", invalid, {isPlaylist: true} )
-End Sub
-
-'********************************************************************
-' YouTube Related Videos
-'********************************************************************
-Sub youtube_related_videos(video As Object)
-    m.FetchVideoList( "videos/" + video["ID"] + "/related?v=2&safeSearch=none", "Related Videos", invalid )
+    m.FetchVideoList( "GetPlaylists", username + "'s Playlists", invalid, {isPlaylist: true, itemFunc: "GetPlaylistItems", contentArg: userID} )
 End Sub
 
 Sub ShowVideoList_impl(contentFunc As String, contentFuncArg as String, title As String, message = "Loading..." as String)
@@ -360,8 +350,11 @@ Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, username As Dyn
 
     screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
     screen.showMessage(message)
-
-    response = m[contentFunc]()
+    if ( categoryData <> invalid AND categoryData.contentArg <> invalid ) then
+        response = m[contentFunc]( categoryData.contentArg )
+    else
+        response = m[contentFunc]()
+    end if
     if (response = invalid) then
         ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "Uh oh")
         return
@@ -862,8 +855,6 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                             end if
                         end if
                     end for
-                else if ( msg.GetIndex() = 2 ) then ' Show related videos
-                    m.ShowRelatedVideos( activeVideo )
                 else if ( msg.GetIndex() = 3 ) then ' Show user's videos
                     m.BrowseUserVideos( activeVideo["Author"], activeVideo["UserID"] )
                 else if ( msg.GetIndex() = 4 ) then ' Show user's playlists
@@ -961,10 +952,6 @@ Sub BuildButtons( activeVideo as Object, screen as Object )
         viewPlaylistButtonAdded = true
     end if
     if ( videoAuthor <> invalid) then
-        ' Hide related videos if the Resume/Play from beginning options are enabled
-        if ( not( resumeEnabled ) ) then
-            screen.AddButton( 2, "Show Related Videos" )
-        end if
         screen.AddButton( 3, "More Videos By " + videoAuthor )
         screen.AddButton( 4, "Show "+ videoAuthor + "'s playlists" )
     end if
