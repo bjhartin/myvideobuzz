@@ -47,7 +47,7 @@ Sub youtube_search()
                     ShowConnectionFailed()
                     return
                 end if
-                videos = m.newVideoListFromXML(xml.entry)
+                videos = m.newVideoListFromJSON(xml.entry)
                 if (videos.Count() > 0) then
                     history.Push(keyword)
                     screen.AddSearchTerm(keyword)
