@@ -64,6 +64,8 @@ Function InitYouTube() As Object
     this.GetPlaylists = GetPlaylists_impl
     this.GetPlaylistItems = GetPlaylistItems_impl
     this.GetWhatsNew = GetWhatsNew_impl
+    this.MostPopular = MostPopular_impl
+    this.GetMostPopular = GetMostPopular_impl
 
     'Categories
     this.CategoriesListFromJSON  = CategoriesListFromJSON_impl
@@ -183,21 +185,26 @@ Function batch_request_xml( ids as Dynamic ) as String
     return returnVal
 End Function
 
-Function ExecBatchQueryV3_impl( videoList as Object ) as Dynamic
-    strVideoIds = ""
-    first = true
-    for each video in videoList
-        if ( first = false ) then
-            strVideoIds = strVideoIds + ","
-        end if
-        strVideoIds = strVideoIds + video
-        first = false
-    end for
+Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Boolean ) as Dynamic
+
     parms = []
+    if ( mostPopular = false ) then
+        strVideoIds = ""
+        first = true
+        for each video in videoList
+            if ( first = false ) then
+                strVideoIds = strVideoIds + ","
+            end if
+            strVideoIds = strVideoIds + video
+            first = false
+        end for
+        parms.push( { name: "id", value: strVideoIds } )
+    else
+        parms.push( { name: "chart", value: "mostPopular" } )
+    end if
     parms.push( { name: "part", value: "snippet,statistics,contentDetails" } )
-    parms.push( { name: "id", value: strVideoIds } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(id,snippet(publishedAt,channelId,title,description,thumbnails,channelTitle),contentDetails(duration),statistics(likeCount,dislikeCount,viewCount)),pageInfo" } )
+    parms.push( { name: "maxResults", value: "5" } )
+    parms.push( { name: "fields", value: "items(id,snippet(publishedAt,channelId,title,description,thumbnails,channelTitle),contentDetails(duration),statistics(likeCount,dislikeCount,viewCount)),nextPageToken,prevPageToken,pageInfo" } )
     return m.BuildV3Request("videos", parms)
 End Function
 
@@ -316,6 +323,14 @@ Sub BrowseUserPlaylists_impl(username As String, userID As String)
     m.FetchVideoList( "GetPlaylists", username + "'s Playlists", invalid, {isPlaylist: true, itemFunc: "GetPlaylistItems", contentArg: userID} )
 End Sub
 
+Sub MostPopular_impl()
+    m.ShowVideoList( "GetMostPopular", "unused", "Today's Most Popular Videos" )
+End Sub
+
+Function GetMostPopular_impl( unusedArg as Dynamic ) as Dynamic
+    return m.ExecBatchQueryV3( invalid, true )
+End Function
+
 Sub ShowVideoList_impl(contentFunc As String, contentFuncArg as String, title As String, message = "Loading..." as String)
 
     'fields = m.FieldsToInclude
@@ -325,7 +340,6 @@ Sub ShowVideoList_impl(contentFunc As String, contentFuncArg as String, title As
 
     screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
     screen.showMessage(message)
-
     response = m[contentFunc]( contentFuncArg )
     if (response = invalid) then
         ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "Uh oh")
@@ -446,13 +460,6 @@ Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynami
             return m.ExecBatchQueryV3( vids )
         end if
     end if
-    ' Now get first playlist items
-    'if ( resp <> invalid ) then
-    '    resp = m.GetPlaylistItems( resp.items[0].id )
-    '    if ( resp <> invalid ) then
-    '        m.ExecBatchQueryV3( resp.items )
-    '    end if
-    'end if
     return invalid
 End Function
 
