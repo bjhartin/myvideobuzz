@@ -205,7 +205,7 @@ Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Bool
         parms.push( { name: "chart", value: "mostPopular" } )
     end if
     parms.push( { name: "part", value: "snippet,statistics,contentDetails" } )
-    parms.push( { name: "maxResults", value: "5" } )
+    parms.push( { name: "maxResults", value: "50" } )
     parms.push( { name: "fields", value: "items(id,snippet(publishedAt,channelId,title,description,thumbnails,channelTitle),contentDetails(duration),statistics(likeCount,dislikeCount,viewCount)),nextPageToken,prevPageToken,pageInfo" } )
     return m.BuildV3Request("videos", parms)
 End Function
