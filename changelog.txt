@@ -1,12 +1,7 @@
-Note: There may be service interruptions around 20 April, 2015, as YouTube is removing access to the current API.
-See the subreddit for more information.
+Note: Google has changed their API, forcing me to "upgrade" the channel. Things will be slower most likely, and crashes may occur.
+I apologize in advance! -Protuhj
 
-Version 1.7 Build 400
-    - Official Release version 1.7.4.
-    - No significant changes over version 1.7.311.
-
-Version 1.7 Build 311
-    - Worked on issue #21 - VEVO music videos should now work!!
-    - These videos will take a little longer to load.
-    - Please report any issues as they appear in the subreddit, or on Facebook.
-    - Or e-mail me: protuhj@gmail.com
+Version 1.7 Build 401
+    - Initial release of changes to support "Upgraded" YouTube API.
+    - The tagline for this release is "There will be bugs!"
+    - Search and What to Watch have been disabled until I can come up with satisfactory replacements (What to Watch is SLOW).

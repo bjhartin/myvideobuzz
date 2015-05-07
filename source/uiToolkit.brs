@@ -447,7 +447,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
     contentdata2 = content_callback[1]
     content_f = content_callback[2]
 
-    contentlist = content_f( contentdata1, contentdata2, 0 )
+    ' If the content function returns invalid data, don't crash the channel.
+    contentlist = firstValid( content_f( contentdata1, contentdata2, 0 ), [] )
 
     if ( contentlist.Count() = 0 ) then
         screen.SetContentList( [] )
@@ -590,7 +591,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
             if (awaiting_timeout = true AND category_time.TotalMilliseconds() > 900) then
                 awaiting_timeout = false
                 ' This calls the content callback
-                contentlist = content_f( contentdata1, contentdata2, category_idx )
+                ' If the content function returns invalid data, don't crash the channel.
+                contentlist = firstValid( content_f( contentdata1, contentdata2, category_idx ), [] )
                 if (contentlist.Count() = 0) then
                     screen.SetContentList([])
                     screen.ShowMessage("No viewable content in this section")

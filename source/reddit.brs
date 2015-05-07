@@ -43,7 +43,7 @@ Sub ViewReddits(youtube as Object, url = "videos" as String)
     next
     ' Category selection function
      oncontent_callback = [categories, m,
-        function(categories, youtube, set_idx, unused)
+        function(categories, youtube, set_idx)
             if ( categories.Count() > 0 ) then
                 categories[set_idx].links.Clear()
                 categories[set_idx].links.Push( categories[set_idx].link )

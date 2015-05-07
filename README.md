@@ -3,6 +3,7 @@ MyVideoBuzz -- Protuhj's Fork
 
 This project is a fork of https://github.com/jesstech/Roku-YouTube. Updates include API change fixes, the addition of new features, and the removal of OAuth settings.
 
+**Note: Versions up to and including 1.7.4 will not work (that well) with YouTube as of 7 May 2015.**
 
 Installation
 ============

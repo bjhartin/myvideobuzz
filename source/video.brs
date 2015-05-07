@@ -60,6 +60,8 @@ Function InitYouTube() As Object
 
     this.BuildV3Request = BuildV3Request_impl
     ' v3 API Requests
+    this.MySubscriptions = MySubscriptions_impl
+    this.GetVideosActivity = GetVideosActivity_impl
     this.MyPlaylists = MyPlaylists_impl
     this.GetPlaylists = GetPlaylists_impl
     this.GetPlaylistItems = GetPlaylistItems_impl
@@ -463,6 +465,28 @@ Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynami
     return invalid
 End Function
 
+Function MySubscriptions_impl() as Dynamic
+    parms = []
+    parms.push( { name: "part", value: "snippet,contentDetails" } )
+    parms.push( { name: "channelId", value: m.channelId } )
+    parms.push( { name: "maxResults", value: "50" } )
+    parms.push( { name: "order", value: "unread" } )
+    parms.push( { name: "fields", value: "items(id,snippet(title,publishedAt,resourceId),contentDetails),nextPageToken,pageInfo,prevPageToken" } )
+    ' Get List of Subscriptions
+    result = m.BuildV3Request("subscriptions", parms)
+    if (result <> invalid) then
+        for each item in result.items
+            item.id = item.snippet.resourceId.channelId
+        end for
+    end if
+
+    return result
+End Function
+
+Function GetVideosActivity_impl( channelId as String ) as Dynamic
+    return m.GetActivity( channelId )
+End Function
+
 Function MyPlaylists_impl() as Dynamic
     return m.GetPlaylists( m.channelId )
 End Function
@@ -673,7 +697,11 @@ Function newVideoFromJSON_impl(jsonVideoItem as Object) As Object
     video["Description"]    = jsonVideoItem.snippet.description
     video["Length"]         = get_human_readable_as_length( jsonVideoItem.contentDetails.duration )
     video["UploadDate"]     = GetUploadDate_impl( jsonVideoItem.snippet.publishedAt )
-    video["Rating"]         = Int(jsonVideoItem.statistics.likeCount.ToFloat() / (jsonVideoItem.statistics.likeCount.ToFloat() + jsonVideoItem.statistics.dislikeCount.ToFloat()) * 100)
+    video["Category"]       = jsonVideoItem.statistics.viewCount + " Views"
+    video["Rating"]         = 0
+    if (jsonVideoItem.statistics.likeCount.Toint() > 0) then
+        video["Rating"]         = Int(jsonVideoItem.statistics.likeCount.ToFloat() / (jsonVideoItem.statistics.likeCount.ToFloat() + jsonVideoItem.statistics.dislikeCount.ToFloat()) * 100)
+    end if
     video["Thumb"]          = firstValid( jsonVideoItem.snippet.thumbnails.medium.url, jsonVideoItem.snippet.thumbnails.default.url, "" )
     return video
 End Function
@@ -692,7 +720,7 @@ Function GetVideoMetaData(videos As Object)
         meta["Actors"]                 = meta["Author"]
         meta["FullDescription"]        = video["Description"]
         meta["Description"]            = Left( video["Description"], 300 )
-        'meta["Categories"]             = video["Category"]
+        meta["Categories"]             = video["Category"]
         meta["StarRating"]             = video["Rating"]
         meta["ShortDescriptionLine1"]  = meta["TitleSeason"]
         meta["ShortDescriptionLine2"]  = meta["Title"]
