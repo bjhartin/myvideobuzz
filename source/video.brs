@@ -19,11 +19,6 @@ Function InitYouTube() As Object
     if (tmpLength <> invalid) then
         this.searchLengthFilter = tmpLength
     end if
-    this.searchDateFilter = ""
-    tmpDate = RegRead("date", "Search")
-    if (tmpDate <> invalid) then
-        this.searchDateFilter = tmpDate
-    end if
 
     this.searchSort = ""
     tmpSort = RegRead("sort", "Search")
@@ -38,7 +33,7 @@ Function InitYouTube() As Object
     this.ExecBatchQueryV3 = ExecBatchQueryV3_impl
 
     'Search
-    this.SearchYouTube = youtube_search
+    this.SearchYouTube = SearchYouTube_impl
 
     'User videos
     this.BrowseUserVideos = youtube_user_videos
@@ -68,6 +63,7 @@ Function InitYouTube() As Object
     this.GetWhatsNew = GetWhatsNew_impl
     this.MostPopular = MostPopular_impl
     this.GetMostPopular = GetMostPopular_impl
+    this.DoSearch = DoSearch_impl
 
     'Categories
     this.CategoriesListFromJSON  = CategoriesListFromJSON_impl
