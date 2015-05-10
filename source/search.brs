@@ -67,6 +67,7 @@ Function DoSearch_impl( searchParms as Object ) as Dynamic
         parms.push( { name: parm, value: searchParms[parm] } )
     end for
     parms.push( { name: "part", value: "id" } )
+    parms.push( { name: "type", value: "video" } )
     parms.push( { name: "maxResults", value: "50" } )
     parms.push( { name: "fields", value: "items(id(videoId)),nextPageToken,pageInfo,prevPageToken,tokenPagination" } )
     'if ( pageToken <> invalid ) then
