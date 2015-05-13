@@ -76,7 +76,7 @@ Sub ShowHomeScreen()
     onselect = [1, menudata, m.youtube,
         function(menu, youtube, set_idx)
             if (menu[set_idx]["ContentFunc"] <> invalid) then
-                youtube.FetchVideoList(menu[set_idx]["ContentFunc"],menu[set_idx]["ShortDescriptionLine1"], invalid, menu[set_idx]["categoryData"])
+                youtube.FetchVideoList(menu[set_idx]["ContentFunc"],menu[set_idx]["ShortDescriptionLine1"], true, menu[set_idx]["categoryData"])
             else if (menu[set_idx]["OnClick"] <> invalid) then
                 onclickevent = menu[set_idx]["OnClick"]
                 youtube[onclickevent]()
@@ -108,7 +108,7 @@ Sub ShowHomeScreen()
         end if
     end if
     youtube.home_screen = screen
-    
+
     ' Code to test specific video IDs
     ' Each of these is age-restricted.
     'ids = []
@@ -121,7 +121,11 @@ Sub ShowHomeScreen()
     'ids.push("5_yOGBzBTdc")
     'youtube.ExecBatchQuery( batch_request_xml( ids ) )
 
+    ' Testing out a specific playlist
+    'youtube.FetchVideoList("GetPlaylistItems", "Blah", false, {contentArg: "PL30BFB50685A0252B"})
+
     uitkDoPosterMenu(menudata, screen, onselect)
+
     sleep(25)
 End Sub
 

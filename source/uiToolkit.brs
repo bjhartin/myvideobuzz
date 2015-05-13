@@ -500,8 +500,8 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
                 if ( contentlist[idx%]["action"] <> invalid AND contentlist[idx%]["isMoreLink"] <> invalid ) then
                     ' Handle the item that loads more playlists/subscriptions
                     contentlist[idx%]["depth"] = firstValid( contentlist[idx%]["depth"], 1 ) + 1
-                    m.youtube.FetchVideoList( contentlist[idx%]["pageURL"], firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"], "Items" ) + " Page " + tostr( contentlist[idx%]["depth"] ), invalid, {isPlaylist: isPlaylist, origTitle: firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"] ), depth: contentlist[idx%]["depth"]}, "Loading more items..." )
-                    contentlist[idx%]["depth"] = contentlist[idx%]["depth"] - 1
+                    m.youtube.FetchVideoList( contentlist[idx%].contentFunc, firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"], "Items" ) + " Page " + tostr( contentlist[idx%]["depth"] ), true, {nextPageToken: contentlist[idx%].nextPageToken, itemFunc: contentlist[idx%].itemFunc, contentArg: contentlist[idx%].contentArg, isPlaylist: isPlaylist, origTitle: firstValid( contentlist[idx%]["origTitle"], contentlist[idx%]["screenTitle"] ), depth: contentlist[idx%]["depth"]}, "Loading more items..." )
+                    contentlist[idx%]["depth"] = contentlist[idx%]["depth"] - 1 
                 else
                     ' This event occurs when a video is selected with the "Ok" button
                     userdata1 = onclick_callback[0]
@@ -675,7 +675,7 @@ Function VListOptionDialog( videoObj as Object, isReddit = false as Boolean ) as
                     plId = firstValid( videoObj[ "PlaylistID" ], invalid )
                     if ( plId <> invalid ) then
                         dialog.Close()
-                        m.youtube.FetchVideoList( getPlaylistURL( plId ), videoObj[ "TitleSeason" ], invalid, invalid, "Loading playlist...", true )
+                        m.youtube.FetchVideoList( "GetPlaylistItems", videoObj[ "TitleSeason" ], false, {contentArg: plId}, "Loading playlist...", true )
                     else
                         print "Couldn't find playlist id for URL: " ; videoObj["URL"]
                     end if

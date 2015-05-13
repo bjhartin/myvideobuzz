@@ -2,16 +2,12 @@
 I apologize in advance! -Protuhj
 - If "My Playlists" is not the first item on the main menu, go to Settings->Add Account, and just hit 'Finished'. This should allow the channel to update as necessary.
 
+Version 1.7 Build 405
+    - Re-added pagination of results. (I hope I got all instances)
+    - Re-added "Show Related Videos"
+
 Version 1.7 Build 404
     - Fixed filtering search results by duration.
 
 Version 1.7 Build 403
     - Re-added YouTube search functionality.
-
-Version 1.7 Build 402
-    - Allow more than 5 videos on some video listings.
-
-Version 1.7 Build 401
-    - Initial release of changes to support "Upgraded" YouTube API.
-    - The tagline for this release is "There will be bugs!".
-    - Search and What to Watch have been disabled until I can come up with satisfactory replacements (What to Watch is SLOW).

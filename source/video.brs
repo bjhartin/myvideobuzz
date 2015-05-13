@@ -29,14 +29,13 @@ Function InitYouTube() As Object
     this.CurrentPageTitle = ""
 
     'API Calls
-    this.ExecServerAPI = ExecServerAPI_impl
     this.ExecBatchQueryV3 = ExecBatchQueryV3_impl
 
     'Search
     this.SearchYouTube = SearchYouTube_impl
 
     'User videos
-    this.BrowseUserVideos = youtube_user_videos
+    this.BrowseUserVideos = BrowseUserVideos_impl
     this.GetActivity = GetActivity_impl
 
     ' Playlists
@@ -46,7 +45,6 @@ Function InitYouTube() As Object
     this.DisplayVideoListFromVideoList = DisplayVideoListFromVideoList_impl
     this.DisplayVideoListFromMetadataList = DisplayVideoListFromMetadataList_impl
     this.FetchVideoList = FetchVideoList_impl
-    this.ShowVideoList = ShowVideoList_impl
 
     this.VideoDetails = VideoDetails_impl
     this.newVideoListFromJSON = newVideoListFromJSON_impl
@@ -64,6 +62,7 @@ Function InitYouTube() As Object
     this.MostPopular = MostPopular_impl
     this.GetMostPopular = GetMostPopular_impl
     this.DoSearch = DoSearch_impl
+    this.FindRelated = FindRelated_impl
 
     'Categories
     this.CategoriesListFromJSON  = CategoriesListFromJSON_impl
@@ -183,7 +182,7 @@ Function batch_request_xml( ids as Dynamic ) as String
     return returnVal
 End Function
 
-Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Boolean ) as Dynamic
+Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Boolean, pageToken = invalid as Dynamic ) as Dynamic
 
     parms = []
     if ( mostPopular = false ) then
@@ -201,84 +200,12 @@ Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Bool
         parms.push( { name: "chart", value: "mostPopular" } )
     end if
     parms.push( { name: "part", value: "snippet,statistics,contentDetails" } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(id,snippet(publishedAt,channelId,title,description,thumbnails,channelTitle),contentDetails(duration),statistics(likeCount,dislikeCount,viewCount)),nextPageToken,prevPageToken,pageInfo" } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(id,snippet(publishedAt,channelId,title,description,thumbnails,channelTitle),contentDetails(duration),statistics(likeCount,dislikeCount,viewCount)),nextPageToken,prevPageToken" } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
     return m.BuildV3Request("videos", parms)
-End Function
-
-Function ExecServerAPI_impl(request As Dynamic, username = "default" As Dynamic, extraParams = invalid as Dynamic) As Object
-    'oa = Oauth()
-
-    if (username = invalid) then
-        username = ""
-    else
-        username = "users/" + username + "/"
-    end if
-
-    method = "GET"
-    url_stub = request
-    postdata = invalid
-    headers = { }
-
-    if (type(request) = "roAssociativeArray") then
-        if (request.url_stub <> invalid) then
-            url_stub = request.url_stub
-        end if
-        if (request.postdata <> invalid) then
-            postdata = request.postdata
-            method = "POST"
-        end if
-        if (request.headers <> invalid) then
-            headers = request.headers
-        end if
-        if (request.method <> invalid) then
-            method = request.method
-        end if
-    end if
-
-    ' Cache the current URL for refresh operations
-    m.currentURL = url_stub
-
-    if (Instr(0, url_stub, "http://") OR Instr(0, url_stub, "https://")) then
-        http = NewHttp(url_stub)
-    else
-        http = NewHttp(m.prefix + "/" + username + url_stub)
-    end if
-
-    http.method = method
-    http.AddParam("v","2","urlParams")
-    if ( islist( extraParams ) ) then
-         for each e in extraParams
-            http.AddParam( e.name, e.value )
-         next
-    end if
-    'oa.sign(http,true)
-
-    'print "----------------------------------"
-    if ( isstr( request ) AND Instr( 1, request, "pkg:/" ) > 0 ) then
-        rsp = ReadAsciiFile(request)
-    else if (postdata <> invalid) then
-        rsp = http.PostFromStringWithTimeout(postdata, 10, headers)
-        'print "postdata:",postdata
-    else
-        rsp = http.getToStringWithTimeout(10, headers)
-    end if
-
-
-    'print "----------------------------------"
-    'print rsp
-    'print "----------------------------------"
-
-    xml = ParseXML(rsp)
-
-    returnObj = CreateObject("roAssociativeArray")
-    returnObj.xml = xml
-    returnObj.status = http.status
-    if ( isstr( request ) AND Instr( 1, request, "pkg:/" ) < 0 ) then
-        returnObj.error = handleYoutubeError(returnObj)
-    end if
-
-    return returnObj
 End Function
 
 Function handleYoutubeError(rsp) As Dynamic
@@ -310,50 +237,29 @@ End Function
 '********************************************************************
 ' YouTube User uploads
 '********************************************************************
-Sub youtube_user_videos(username As String, userID As String)
-    m.ShowVideoList( "GetActivity", userID, "Videos By " + username )
+Sub BrowseUserVideos_impl(username As String, userID As String)
+    m.FetchVideoList( "GetActivity", "Videos By " + username, false, {contentArg: userID})
 End Sub
 
 '********************************************************************
 ' YouTube User Playlists
 '********************************************************************
 Sub BrowseUserPlaylists_impl(username As String, userID As String)
-    m.FetchVideoList( "GetPlaylists", username + "'s Playlists", invalid, {isPlaylist: true, itemFunc: "GetPlaylistItems", contentArg: userID} )
+    m.FetchVideoList( "GetPlaylists", username + "'s Playlists", true, {isPlaylist: true, itemFunc: "GetPlaylistItems", contentArg: userID} )
 End Sub
 
 Sub MostPopular_impl()
-    m.ShowVideoList( "GetMostPopular", "unused", "Today's Most Popular Videos" )
+    m.FetchVideoList( "GetMostPopular", "Today's Most Popular Videos", false)
 End Sub
 
-Function GetMostPopular_impl( unusedArg as Dynamic ) as Dynamic
-    return m.ExecBatchQueryV3( invalid, true )
+Function GetMostPopular_impl( pageToken = invalid as Dynamic ) as Dynamic
+    return m.ExecBatchQueryV3( invalid, true, pageToken )
 End Function
-
-Sub ShowVideoList_impl(contentFunc As String, contentFuncArg as String, title As String, message = "Loading..." as String)
-
-    'fields = m.FieldsToInclude
-    'if Instr(0, APIRequest, "?") = 0 then
-    '    fields = "?"+Mid(fields, 2)
-    'end if
-
-    screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
-    screen.showMessage(message)
-    response = m[contentFunc]( contentFuncArg )
-    if (response = invalid) then
-        ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "Uh oh")
-        return
-    end if
-
-    ' Everything is OK, display the list
-    videos = m.newVideoListFromJSON( response.items )
-    m.DisplayVideoListFromVideoList( videos, title, invalid, screen, invalid )
-
-End Sub
 
 '********************************************************************
 ' YouTube Poster/Video List Utils
 '********************************************************************
-Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, username As Dynamic, categoryData = invalid as Dynamic, message = "Loading..." as String, useXMLTitle = false as Dynamic)
+Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, isCategoryList = true As Boolean, categoryData = invalid as Dynamic, message = "Loading..." as String, useXMLTitle = false as Dynamic)
 
     'fields = m.FieldsToInclude
     'if Instr(0, APIRequest, "?") = 0 then
@@ -362,8 +268,12 @@ Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, username As Dyn
 
     screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
     screen.showMessage(message)
+    contentArgument = invalid
     if ( categoryData <> invalid AND categoryData.contentArg <> invalid ) then
-        response = m[contentFunc]( categoryData.contentArg )
+        contentArgument = categoryData.contentArg
+        response = m[contentFunc]( categoryData.contentArg, categoryData.nextPageToken )
+    else if ( categoryData <> invalid AND categoryData.nextPageToken <> invalid ) then
+        response = m[contentFunc]( categoryData.nextPageToken )
     else
         response = m[contentFunc]()
     end if
@@ -373,25 +283,24 @@ Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, username As Dyn
     end if
 
     ' Everything is OK, display the list
-    if ( categoryData <> invalid ) then
+    if ( isCategoryList = true ) then
         categoryData.categories = m.CategoriesListFromJSON( response.items, categoryData.itemFunc )
-        if ( response.link <> invalid ) then
-            for each link in response.link
-                if ( link@rel = "next" ) then
-                    categoryData.categories.Push({title: "Load More",
-                        shortDescriptionLine1: "Load More Items",
-                        action: "next",
-                        pageURL: link@href,
-                        screenTitle: title,
-                        origTitle: firstValid( categoryData["origTitle"], title ),
-                        depth: firstValid( categoryData["depth"], 1 ),
-                        isMoreLink: true,
-                        HDPosterUrl:"pkg:/images/icon_next_episode.jpg",
-                        SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
-                end if
-            end for
+        if ( response.nextPageToken <> invalid ) then
+            categoryData.categories.Push({title: "Load More",
+                shortDescriptionLine1: "Load More Items",
+                action: "next",
+                nextPageToken: response.nextPageToken,
+                contentFunc: contentFunc,
+                itemFunc: categoryData.itemFunc,
+                contentArg: categoryData.contentArg,
+                screenTitle: title,
+                origTitle: firstValid( categoryData["origTitle"], title ),
+                depth: firstValid( categoryData["depth"], 1 ),
+                isMoreLink: true,
+                HDPosterUrl:"pkg:/images/icon_next_episode.jpg",
+                SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
         end if
-        m.DisplayVideoListFromVideoList( [], title, response.link, screen, categoryData )
+        m.DisplayVideoListFromVideoList( [], title, invalid, screen, categoryData )
     else
         if ( useXMLTitle = true AND response.title <> invalid ) then
             breadA = "Playlist"
@@ -402,8 +311,18 @@ Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, username As Dyn
         else
             newTitle = title
         end if
-        videos = m.newVideoListFromJSON( xml.entry )
-        m.DisplayVideoListFromVideoList( videos, newTitle, xml.link, screen, invalid )
+        videos = m.newVideoListFromJSON( response.items )
+        if ( response.nextPageToken <> invalid ) then
+            linkData = {}
+            ytPageData = {}
+            ytPageData.contentFunc = contentFunc
+            ytPageData.contentArg = contentArgument
+            ytPageData.nextPageToken = response.nextPageToken
+            linkData.ytPageData = ytPageData
+        else
+            linkData = invalid
+        end if
+        m.DisplayVideoListFromVideoList( videos, newTitle, linkData, screen, invalid )
     end if
 
 End Sub
@@ -439,8 +358,8 @@ Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynami
     parms = []
     parms.push( { name: "part", value: "contentDetails" } )
     parms.push( { name: "channelId", value: forChannelId } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(contentDetails(upload(videoId))),nextPageToken,pageInfo,prevPageToken,tokenPagination" } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(contentDetails(upload(videoId))),nextPageToken,prevPageToken" } )
     if ( pageToken <> invalid ) then
         parms.push( { name: "pageToken", value: pageToken } )
     end if
@@ -455,19 +374,25 @@ Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynami
             end if
         end for
         if ( vids.Count() > 0 ) then
-            return m.ExecBatchQueryV3( vids )
+            result = m.ExecBatchQueryV3( vids )
+            result.nextPageToken = resp.nextPageToken
+            result.prevPageToken = resp.prevPageToken
+            return result
         end if
     end if
     return invalid
 End Function
 
-Function MySubscriptions_impl() as Dynamic
+Function MySubscriptions_impl( pageToken = invalid as Dynamic ) as Dynamic
     parms = []
     parms.push( { name: "part", value: "snippet,contentDetails" } )
     parms.push( { name: "channelId", value: m.channelId } )
-    parms.push( { name: "maxResults", value: "50" } )
+    parms.push( { name: "maxResults", value: "49" } )
     parms.push( { name: "order", value: "unread" } )
-    parms.push( { name: "fields", value: "items(id,snippet(title,publishedAt,resourceId),contentDetails),nextPageToken,pageInfo,prevPageToken" } )
+    parms.push( { name: "fields", value: "items(id,snippet(title,publishedAt,resourceId),contentDetails),nextPageToken" } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
     ' Get List of Subscriptions
     result = m.BuildV3Request("subscriptions", parms)
     if (result <> invalid) then
@@ -479,37 +404,36 @@ Function MySubscriptions_impl() as Dynamic
     return result
 End Function
 
-Function GetVideosActivity_impl( channelId as String ) as Dynamic
-    return m.GetActivity( channelId )
+Function GetVideosActivity_impl( channelId as String, pageToken = invalid as Dynamic ) as Dynamic
+    return m.GetActivity( channelId, pageToken )
 End Function
 
-Function MyPlaylists_impl() as Dynamic
-    return m.GetPlaylists( m.channelId )
+Function MyPlaylists_impl( pageToken = invalid as Dynamic ) as Dynamic
+    return m.GetPlaylists( m.channelId, pageToken )
 End Function
 
-Function GetPlaylists_impl( forChannelId as String ) as Dynamic
+Function GetPlaylists_impl( forChannelId as String, pageToken = invalid as Dynamic ) as Dynamic
     parms = []
     parms.push( { name: "part", value: "snippet" } )
     parms.push( { name: "channelId", value: forChannelId } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(id,snippet(title)),nextPageToken,pageInfo,prevPageToken,tokenPagination" } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(id,snippet(title)),nextPageToken" } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
     ' Get List of Playlists
     return m.BuildV3Request("playlists", parms)
-    ' Now get first playlist items
-    'if ( resp <> invalid ) then
-    '    resp = m.GetPlaylistItems( resp.items[0].id )
-    '    if ( resp <> invalid ) then
-    '        m.ExecBatchQueryV3( resp.items )
-    '    end if
-    'end if
 End Function
 
-Function GetPlaylistItems_impl( playlistId as String ) as Object
+Function GetPlaylistItems_impl( playlistId as String, pageToken = invalid as Dynamic ) as Object
     parms = []
     parms.push( { name: "part", value: "snippet" } )
     parms.push( { name: "playlistId", value: playlistId } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(snippet(resourceId)),nextPageToken,pageInfo,prevPageToken" } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(snippet(resourceId)),nextPageToken,prevPageToken" } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
     ' Get List of Playlists
     resp = m.BuildV3Request("playlistItems", parms)
     if ( resp <> invalid AND resp.items <> invalid ) then
@@ -517,7 +441,10 @@ Function GetPlaylistItems_impl( playlistId as String ) as Object
         for each item in resp.items
             vids.Push( item.snippet.resourceId.videoId )
         end for
-        return m.ExecBatchQueryV3( vids )
+        retVal = m.ExecBatchQueryV3( vids )
+        retVal.nextPageToken = resp.nextPageToken
+        retVal.prevPageToken = resp.prevPageToken
+        return retVal
     end if
     return invalid
 End Function
@@ -528,24 +455,29 @@ Sub GetWhatsNew_impl()
     resp = m.BuildV3Request("playlists", parms)
     printany(5, "Playlists", resp)
 End Sub
-Function ReturnVideoList_impl(listFunction as String, listFunctionArg as String, title As String, username As Dynamic, additionalParams = invalid as Dynamic)
-    response = m[listFunction]( listFunctionArg )
+Function ReturnVideoList_impl(listFunction as String, listFunctionArg as String, pageToken = invalid as Dynamic)
+    response = m[listFunction]( listFunctionArg, pageToken )
     if (response = invalid) then
         return invalid
     end if
     videos = m.newVideoListFromJSON( response.items )
     metadata = GetVideoMetaData(videos)
 
-    'if (xml.link <> invalid) then
-    '    for each link in xml.link
-    '        if (link@rel = "next") then
-    '            metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
-    '        else if (link@rel = "previous") then
-    '            metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
-    '        end if
-    '    end for
-    'end if
-
+    if ( response.nextPageToken <> invalid ) then
+        ytPageData = {}
+        ytPageData.contentFunc = listFunction
+        ytPageData.contentArg = listFunctionArg
+        ytPageData.pageToken = response.nextPageToken
+        metadata.Push({shortDescriptionLine1: "More Results", action: "next", linkData: ytPageData, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+    end if
+    
+    if ( response.prevPageToken <> invalid ) then
+        ytPageData = {}
+        ytPageData.contentFunc = listFunction
+        ytPageData.contentArg = listFunctionArg
+        ytPageData.pageToken = response.prevPageToken
+        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", linkData: ytPageData, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
+    end if
     return metadata
 End Function
 
@@ -558,7 +490,7 @@ Sub DisplayVideoListFromVideoList_impl(videos As Object, title As String, links=
     m.DisplayVideoListFromMetadataList(metadata, title, links, screen, categoryData)
 End Sub
 
-Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, links=invalid, screen = invalid, categoryData = invalid)
+Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, linkData = invalid as Dynamic, screen = invalid, categoryData = invalid)
     if (screen = invalid) then
         screen = uitkPreShowPosterMenu("flat-episodic-16x9", title)
         screen.showMessage("Loading...")
@@ -576,7 +508,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
             function(categories, youtube, set_idx)
                 'PrintAny(0, "category:", categories[set_idx])
                 if (youtube <> invalid AND categories.Count() > 0 AND categories[set_idx]["action"] = invalid ) then
-                    return youtube.ReturnVideoList( categories[set_idx].itemFunc, categories[set_idx].id, youtube.CurrentPageTitle, invalid, additionalParams )
+                    return youtube.ReturnVideoList( categories[set_idx].itemFunc, categories[set_idx].id )
                 else
                     return []
                 end if
@@ -585,9 +517,9 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
         onclick_callback = [categoryData.categories, m,
             function(categories, youtube, video, category_idx, set_idx)
                 if (video[set_idx]["action"] <> invalid) then
-                    additionalParams = []
-                    additionalParams.push( { name: "safeSearch", value: "none" } )
-                    return { isContentList: true, content: youtube.ReturnVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid, additionalParams ) }
+                    'additionalParams = []
+                    'additionalParams.push( { name: "safeSearch", value: "none" } )
+                    return { isContentList: true, content: youtube.ReturnVideoList( video[set_idx]["linkData"]["contentFunc"], video[set_idx]["linkData"]["contentArg"], video[set_idx]["linkData"]["pageToken"] ) }
                 else
                     vidIdx% = youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
                     return { isContentList: false, content: video, vidIdx: vidIdx%}
@@ -595,22 +527,21 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
             end function]
         uitkDoCategoryMenu( categoryList, screen, oncontent_callback, onclick_callback, onplay_callback, categoryData.isPlaylist )
     else if (metadata.Count() > 0) then
-        if ( links <> invalid ) then
-            for each link in links
-                if (type(link) = "roXMLElement") then
-                    if (link@rel = "next") then
-                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
-                    else if (link@rel = "previous") then
-                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link@href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg"})
-                    end if
-                else if (type(link) = "roAssociativeArray") then
-                    if (link.type = "next") then
-                        metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
-                    else if (link.type = "previous") then
-                        metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
-                    end if
+        if ( linkData <> invalid ) then
+            if (type(linkData) = "roAssociativeArray") then
+                link = linkData.next
+                if (link <> invalid) then
+                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg", func: link.func})
                 end if
-            end for
+                link = linkData.previous
+                if (link <> invalid) then
+                    metadata.Unshift({shortDescriptionLine1: "Back", action: "prev", pageURL: link.href, HDPosterUrl:"pkg:/images/icon_prev_episode.jpg", SDPosterUrl:"pkg:/images/icon_prev_episode.jpg", func: link.func})
+                end if
+                link = linkData.ytPageData
+                if (link <> invalid) then
+                    metadata.Push({shortDescriptionLine1: "More Results", action: "next", linkData: link, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
+                end if
+            end if
         end if
         onselect = [1, metadata, m,
             function(video, youtube, set_idx)
@@ -618,7 +549,7 @@ Sub DisplayVideoListFromMetadataList_impl(metadata As Object, title As String, l
                 if (video[set_idx]["func"] <> invalid) then
                     video[set_idx]["func"](youtube, video[set_idx]["pageURL"])
                 else if (video[set_idx]["action"] <> invalid) then
-                    youtube.FetchVideoList(video[set_idx]["pageURL"], youtube.CurrentPageTitle, invalid)
+                    youtube.FetchVideoList(video[set_idx]["linkData"]["contentFunc"], youtube.CurrentPageTitle, false, video[set_idx]["linkData"])
                 else
                     retVal% = youtube.VideoDetails(video[set_idx], youtube.CurrentPageTitle, video, set_idx)
                 end if
@@ -886,6 +817,8 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                             end if
                         end if
                     end for
+                else if ( msg.GetIndex() = 2 ) then ' Show related videos
+                    m.FetchVideoList( "FindRelated", "Related Videos", false, {contentArg: activeVideo["ID"]} )
                 else if ( msg.GetIndex() = 3 ) then ' Show user's videos
                     m.BrowseUserVideos( activeVideo["Author"], activeVideo["UserID"] )
                 else if ( msg.GetIndex() = 4 ) then ' Show user's playlists
@@ -902,11 +835,12 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                 else if (msg.GetIndex() = 7) then ' View playlist
                     if ( activeVideo["Source"] = GetConstants().sYOUTUBE ) then
                         if ( firstValid( activeVideo["IsPlaylist"], false ) = true ) then
-                            m.FetchVideoList( activeVideo["URL"], activeVideo["TitleSeason"], invalid, invalid, "Loading playlist...", true)
+                            print "First link @ video::901"
+                            m.FetchVideoList( "GetPlaylistItems", activeVideo["TitleSeason"], false, {contentArg: activeVideo["PlaylistID"]}, "Loading playlist...", true)
                         else
-                            plId = firstValid( activeVideo["PlaylistID"], invalid )
+                            plId = activeVideo["PlaylistID"]
                             if ( plId <> invalid ) then
-                                m.FetchVideoList( getPlaylistURL( plId ), activeVideo[ "TitleSeason" ], invalid, invalid, "Loading playlist...", true )
+                                m.FetchVideoList( "GetPlaylistItems", activeVideo[ "TitleSeason" ], false, {contentArg: plId}, "Loading playlist...", true )
                             else
                                 print "Couldn't find playlist id for URL: " ; activeVideo["URL"]
                             end if
@@ -983,6 +917,10 @@ Sub BuildButtons( activeVideo as Object, screen as Object )
         viewPlaylistButtonAdded = true
     end if
     if ( videoAuthor <> invalid) then
+        ' Hide related videos if the Resume/Play from beginning options are enabled
+        if ( not( resumeEnabled ) ) then
+            screen.AddButton( 2, "Show Related Videos" )
+        end if
         screen.AddButton( 3, "More Videos By " + videoAuthor )
         screen.AddButton( 4, "Show "+ videoAuthor + "'s playlists" )
     end if

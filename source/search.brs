@@ -35,18 +35,19 @@ Sub SearchYouTube_impl()
                 end if
                 ' Don't include items that require purchase to watch, since we don't have a way to pay for them!
                 parms["safeSearch"] = "none"
-                dialog = ShowPleaseWait("Please wait", prompt)
-                videos = m.DoSearch( parms )
-                if (videos <> invalid AND videos.Count() > 0) then
-                    history.Push(keyword)
-                    screen.AddSearchTerm(keyword)
-                    dialog.Close()
+                'dialog = ShowPleaseWait("Please wait", prompt)
+                'videos = m.DoSearch( parms )
+                'if (videos <> invalid AND videos.Count() > 0) then
+                history.Push(keyword)
+                screen.AddSearchTerm(keyword)
+                'dialog.Close()
                     'm.DisplayVideoListFromVideoList(videos, "Search Results for " + Chr(39) + keyword + Chr(39), xml.link, invalid, invalid)
-                    m.DisplayVideoListFromVideoList(videos, "Search Results for " + Chr(39) + keyword + Chr(39), invalid, invalid, invalid)
-                else
-                    dialog.Close()
-                    ShowErrorDialog("No videos match your search", "Search results")
-                end if
+                    'm.DisplayVideoListFromVideoList(videos, "Search Results for " + Chr(39) + keyword + Chr(39), invalid, invalid, invalid)
+                m.FetchVideoList( "DoSearch", "Search Results for " + Chr(39) + keyword + Chr(39), false, {contentArg: parms}, "Please Wait..." )
+                'else
+                '    dialog.Close()
+                '    ShowErrorDialog("No videos match your search", "Search results")
+                'end if
             else if (msg.isCleared()) then
                 history.Clear()
             else if ((msg.isRemoteKeyPressed() AND msg.GetIndex() = 10) OR msg.isButtonInfo()) then
@@ -61,18 +62,18 @@ Sub SearchYouTube_impl()
     end while
 End Sub
 
-Function DoSearch_impl( searchParms as Object ) as Dynamic
+Function DoSearch_impl( searchParms as Object, pageToken = invalid as Dynamic ) as Dynamic
     parms = []
     for each parm in searchParms
         parms.push( { name: parm, value: searchParms[parm] } )
     end for
     parms.push( { name: "part", value: "id" } )
     parms.push( { name: "type", value: "video" } )
-    parms.push( { name: "maxResults", value: "50" } )
-    parms.push( { name: "fields", value: "items(id(videoId)),nextPageToken,pageInfo,prevPageToken,tokenPagination" } )
-    'if ( pageToken <> invalid ) then
-    '    parms.push( { name: "pageToken", value: pageToken } )
-    'end if
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(id(videoId)),nextPageToken" } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
     ' Get activity
     resp = m.BuildV3Request("search", parms)
     if ( resp <> invalid ) then
@@ -84,15 +85,42 @@ Function DoSearch_impl( searchParms as Object ) as Dynamic
             end if
         end for
         if ( vids.Count() > 0 ) then
-            vidyas = m.ExecBatchQueryV3( vids )
-            if ( vidyas <> invalid ) then
-                return m.newVideoListFromJSON( vidyas.items )
-            end if
+            retVal = m.ExecBatchQueryV3( vids )
+            retVal.nextPageToken = resp.nextPageToken
+            return retVal
         end if
     end if
     return invalid
 End Function
 
+Function FindRelated_impl( relatedTo as String, pageToken = invalid as Dynamic ) as Dynamic
+    parms = []
+    parms.push( { name: "part", value: "id" } )
+    parms.push( { name: "type", value: "video" } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "fields", value: "items(id(videoId)),nextPageToken" } )
+    parms.push( { name: "relatedToVideoId", value: relatedTo } )
+    if ( pageToken <> invalid ) then
+        parms.push( { name: "pageToken", value: pageToken } )
+    end if
+    ' Get activity
+    resp = m.BuildV3Request("search", parms)
+    if ( resp <> invalid ) then
+        vids = []
+        for each item in resp.items
+            'if ( item.snippet.type = "upload" ) then
+            if ( item.id <> invalid AND item.id.videoId <> invalid ) then
+                vids.Push( item.id.videoId )
+            end if
+        end for
+        if ( vids.Count() > 0 ) then
+            retVal = m.ExecBatchQueryV3( vids )
+            retVal.nextPageToken = resp.nextPageToken
+            return retVal
+        end if
+    end if
+    return invalid
+End Function
 
 Function GenerateSearchSuggestions(partSearchText As String) As Object
     suggestions = CreateObject("roArray", 1, true)
