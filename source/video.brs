@@ -45,6 +45,7 @@ Function InitYouTube() As Object
     'User videos
     this.BrowseUserVideos = BrowseUserVideos_impl
     this.GetActivity = GetActivity_impl
+    this.GetFilteredActivity = GetFilteredActivity_impl
 
     ' Playlists
     this.BrowseUserPlaylists = BrowseUserPlaylists_impl
@@ -153,8 +154,62 @@ Function InitYouTube() As Object
     this.patterns = patterns
 
     this.sleep_timer = -100
+    this.WhatsNewLastQueried% = 0
+    this.WhatsNewVideos = invalid
     return this
 End Function
+
+Sub GetWhatsNew_impl()
+    dateObj = CreateObject( "roDateTime" )
+    dateObj.Mark()
+    curDateSecs% = dateObj.AsSeconds()
+    twoDaysinSecs% = 172800
+    prevDate = CreateObject( "roDateTime" )
+    prevDate.FromSeconds( curDateSecs% - twoDaysinSecs% )
+    twoDaysAgo = DateToISO8601String( prevDate, true )
+    title = "What's New"
+    screen = uitkPreShowPosterMenu( "flat-episodic-16x9", title )
+    screen.showMessage( "Building list... this may take some time!" )
+    ' Try to reduce queries, by limiting updates to only every 30 minutes
+    if ( (curDateSecs% - m.WhatsNewLastQueried% > 1800) OR (m.WhatsNewVideos = invalid) )
+        response = m.MySubscriptions()
+        if ( response = invalid ) then
+            ShowConnectionFailed()
+            return
+        end if
+
+        m.WhatsNewVideos = []
+        m.WhatsNewLastQueried% = curDateSecs%
+
+        tempVids = []
+        for each item in response.items
+            vids = m.GetFilteredActivity( item.id, twoDaysAgo )
+            if ( vids <> invalid ) then
+                vidList = m.newVideoListFromJSON( vids.items )
+                for each vidya in vidList
+                    tempVids.Push( vidya )
+                end for
+            end if
+        end for
+        if ( tempVids.Count() > 0 ) then
+            metadata = GetVideoMetaData( tempVids )
+            Sort( metadata, Function(vid as Object) as Integer
+                    return vid.DateSeconds
+                End Function )
+            while ( metadata.Count() > 50 )
+                metadata.Pop()
+            end while
+            m.WhatsNewVideos = metadata
+        end if
+    end if
+    if ( m.WhatsNewVideos.Count() = 0 ) then
+        ShowErrorDialog( "No activity in your subscriptions, check back later!", "Empty" )
+    else
+        m.DisplayVideoListFromVideoList(m.WhatsNewVideos, title, invalid, screen, invalid, Function(videos as Object) as Object
+                                                                                 return videos
+                                                                              End Function )
+    end if
+End Sub
 
 Function buildIt( one, middle, ending ) as String
     result = ""
@@ -391,13 +446,65 @@ Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynami
     return invalid
 End Function
 
+Function GetFilteredActivity_impl( forChannelId as String, fromDate as String ) as Dynamic
+    parms = []
+    parms.push( { name: "part", value: "snippet,contentDetails" } )
+    parms.push( { name: "channelId", value: forChannelId } )
+    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "publishedAfter", value: fromDate } )
+    parms.push( { name: "fields", value: "items(contentDetails(upload(videoId)),snippet(publishedAt))" } )
+
+    ' Get activity
+    resp = m.BuildV3Request("activities", parms)
+    vids = []
+    if ( resp <> invalid ) then
+        for each item in resp.items
+            'if ( item.snippet.type = "upload" ) then
+            if ( item.contentDetails <> invalid AND item.contentDetails.upload <> invalid AND item.contentDetails.upload.videoId <> invalid ) then
+                vids.Push( item.contentDetails.upload.videoId )
+            end if
+        end for
+        if ( vids.Count() > 0 ) then
+            return m.ExecBatchQueryV3( vids )
+        end if
+    end if
+    return invalid
+End Function
+
+' From TheEndless via the Roku Development Forums
+Function DateToISO8601String(date As Object, includeZ = True As Boolean) As String
+   iso8601 = PadLeft(date.GetYear().ToStr(), "0", 4)
+   iso8601 = iso8601 + "-"
+   iso8601 = iso8601 + PadLeft(date.GetMonth().ToStr(), "0", 2)
+   iso8601 = iso8601 + "-"
+   iso8601 = iso8601 + PadLeft(date.GetDayOfMonth().ToStr(), "0", 2)
+   iso8601 = iso8601 + "T"
+   iso8601 = iso8601 + PadLeft(date.GetHours().ToStr(), "0", 2)
+   iso8601 = iso8601 + ":"
+   iso8601 = iso8601 + PadLeft(date.GetMinutes().ToStr(), "0", 2)
+   iso8601 = iso8601 + ":"
+   iso8601 = iso8601 + PadLeft(date.GetSeconds().ToStr(), "0", 2)
+   if ( includeZ ) then
+      iso8601 = iso8601 + "Z"
+   end if
+   return iso8601
+End Function
+
+' From TheEndless via the Roku Development Forums
+Function PadLeft(value As String, padChar As String, totalLength As Integer) As String
+   while ( value.Len() < totalLength )
+      value = padChar + value
+   end while
+   return value
+End Function
+
 Function MySubscriptions_impl( pageToken = invalid as Dynamic ) as Dynamic
     parms = []
     parms.push( { name: "part", value: "snippet,contentDetails" } )
     parms.push( { name: "channelId", value: m.channelId } )
     parms.push( { name: "maxResults", value: "49" } )
     parms.push( { name: "order", value: "unread" } )
-    parms.push( { name: "fields", value: "items(id,snippet(title,publishedAt,resourceId),contentDetails),nextPageToken" } )
+    parms.push( { name: "fields", value: "items(id,snippet(title,resourceId),contentDetails),nextPageToken" } )
     if ( pageToken <> invalid ) then
         parms.push( { name: "pageToken", value: pageToken } )
     end if
@@ -457,12 +564,6 @@ Function GetPlaylistItems_impl( playlistId as String, pageToken = invalid as Dyn
     return invalid
 End Function
 
-Sub GetWhatsNew_impl()
-    parms = []
-    parms.push( { name: "part", value: "snippet" } )
-    resp = m.BuildV3Request("playlists", parms)
-    printany(5, "Playlists", resp)
-End Sub
 Function ReturnVideoList_impl(listFunction as String, listFunctionArg as String, pageToken = invalid as Dynamic)
     response = m[listFunction]( listFunctionArg, pageToken )
     if (response = invalid) then
@@ -478,7 +579,7 @@ Function ReturnVideoList_impl(listFunction as String, listFunctionArg as String,
         ytPageData.pageToken = response.nextPageToken
         metadata.Push({shortDescriptionLine1: "More Results", action: "next", linkData: ytPageData, HDPosterUrl:"pkg:/images/icon_next_episode.jpg", SDPosterUrl:"pkg:/images/icon_next_episode.jpg"})
     end if
-    
+
     if ( response.prevPageToken <> invalid ) then
         ytPageData = {}
         ytPageData.contentFunc = listFunction
@@ -613,11 +714,8 @@ Function newVideoListFromJSON_impl(jsonList As Object) As Object
     'print "newVideoListFromJSON_impl init"
     videolist = CreateObject("roList")
     for each record in jsonList
-        skipItem = false
-        if ( skipItem = false ) then
-            video = m.newVideoFromJSON( record )
-            videolist.Push( video )
-        end if
+        video = m.newVideoFromJSON( record )
+        videolist.Push( video )
     next
     return videolist
 End Function
@@ -632,6 +730,7 @@ Function newVideoFromJSON_impl(jsonVideoItem as Object) As Object
     video["Description"]    = jsonVideoItem.snippet.description
     video["Length"]         = get_human_readable_as_length( jsonVideoItem.contentDetails.duration )
     video["UploadDate"]     = GetUploadDate_impl( jsonVideoItem.snippet.publishedAt )
+    video["DateSeconds"]    = GetUploadSeconds_impl( jsonVideoItem.snippet.publishedAt )
     video["Category"]       = jsonVideoItem.statistics.viewCount + " Views"
     video["Rating"]         = 0
     if (jsonVideoItem.statistics.likeCount.Toint() > 0) then
@@ -664,6 +763,7 @@ Function GetVideoMetaData(videos As Object)
         meta["Length"]                 = video["Length"]
         meta["UserID"]                 = video["UserID"]
         meta["ReleaseDate"]            = video["UploadDate"]
+        meta["DateSeconds"]            = video["DateSeconds"]
         meta["StreamFormat"]           = "mp4"
         meta["Live"]                   = false
         meta["Streams"]                = []
@@ -710,6 +810,14 @@ Function GetUploadDate_impl(dateString as String) As Dynamic
     'dateObj.FromISO8601String(Left(dateText, Len(dateText) - 1))
     'return tostr(dateObj.GetMonth()) + "/" + tostr(dateObj.GetDayOfMonth()) + "/" + tostr(dateObj.GetYear())
     return Left(dateString, 10)
+End Function
+
+Function GetUploadSeconds_impl(dateText as String) As Dynamic
+    dateObj = CreateObject("roDateTime")
+    ' The value from YouTube has a 'Z' at the end, we need to strip this off, or else
+    ' FromISO8601String() can't parse the date properly
+    dateObj.FromISO8601String(Left(dateText, Len(dateText) - 1))
+    return dateObj.AsSeconds()
 End Function
 
 '*******************************************

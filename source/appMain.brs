@@ -52,7 +52,7 @@ Sub ShowHomeScreen()
 
     menudata=[]
     if (youtube.channelId <> invalid) and (isnonemptystr(youtube.channelId)) then
-        'TEMPmenudata.Push({ShortDescriptionLine1:"What to Watch", OnClick: "GetWhatsNew", ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
+        menudata.Push({ShortDescriptionLine1:"What to Watch", OnClick: "GetWhatsNew", ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Playlists", ContentFunc: "MyPlaylists", categoryData:{ isPlaylist: true, itemFunc: "GetPlaylistItems"}, ShortDescriptionLine2:"Browse your Playlists", HDPosterUrl:"pkg:/images/YourPlaylists.jpg", SDPosterUrl:"pkg:/images/YourPlaylists.jpg"})
         menudata.Push({ShortDescriptionLine1:"My Subscriptions", ContentFunc: "MySubscriptions", categoryData:{ isPlaylist: true, itemFunc: "GetVideosActivity"}, ShortDescriptionLine2:"Browse your Subscriptions", HDPosterUrl:"pkg:/images/YourSubscriptions.jpg", SDPosterUrl:"pkg:/images/YourSubscriptions.jpg"})
         'TEMP? menudata.Push({ShortDescriptionLine1:"My Favorites", FeedURL:"users/" + ytusername + "/favorites?v=2&max-results=50&safeSearch=none", categoryData: invalid, ShortDescriptionLine2:"Browse your favorite videos", HDPosterUrl:"pkg:/images/YourFavorites.jpg", SDPosterUrl:"pkg:/images/YourFavorites.jpg"})
