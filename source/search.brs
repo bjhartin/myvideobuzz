@@ -308,7 +308,7 @@ Function SearchSortClicked() as String
                 if (dlgMsg.GetIndex() = 1) then
                     retVal = ""
                 else if (dlgMsg.GetIndex() = 2) then
-                    retVal = "published"
+                    retVal = "date"
                 else if (dlgMsg.GetIndex() = 3) then
                     retVal = "viewCount"
                 else if (dlgMsg.GetIndex() = 4) then

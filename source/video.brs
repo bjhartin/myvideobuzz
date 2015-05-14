@@ -21,6 +21,14 @@ Function InitYouTube() As Object
     end if
 
     this.searchSort = ""
+    ' Version of the searchSort value.
+    this.searchSortHistory = "1"
+    searchSortVer = RegRead( "SearchSortVersion", "Settings" )
+    if ( searchSortVer = invalid OR searchSortVer <> this.searchSortHistory ) then
+        print( "Search Sort version mismatch (clearing setting), found: " + tostr( searchSortVer ) + ", expected: " + this.searchSortHistory )
+        RegWrite( "SearchSortVersion", this.searchSortHistory, "Settings" )
+    end if
+
     tmpSort = RegRead("sort", "Search")
     if (tmpSort <> invalid) then
         this.searchSort = tmpSort

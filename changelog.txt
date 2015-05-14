@@ -2,6 +2,9 @@
 I apologize in advance! -Protuhj
 - If "My Playlists" is not the first item on the main menu, go to Settings->Add Account, and just hit 'Finished'. This should allow the channel to update as necessary.
 
+Version 1.7 Build 406
+    - Fixed Search when sorting by 'Newest First'
+
 Version 1.7 Build 405
     - Re-added pagination of results. (I hope I got all instances)
     - Re-added "Show Related Videos"
