@@ -441,6 +441,7 @@ End Function
 Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, onclick_callback = invalid, onplay_func = invalid, isPlaylist = false as Boolean, isReddit = false as Boolean) As Integer
     'Set current category to first in list
     category_idx = 0
+    category_queried = 0
     contentlist = []
     screen.SetListNames( categoryList )
     contentdata1 = content_callback[0]
@@ -588,18 +589,23 @@ Function uitkDoCategoryMenu(categoryList, screen, content_callback = invalid, on
             ' This addresses the issue when trying to scroll quickly through the category list,
             ' previously, each category would queue a request to YouTube, and the user would have to wait when they
             ' reached their desired category for the correct video list to load (could be painful with a lot of categories)
-            if (awaiting_timeout = true AND category_time.TotalMilliseconds() > 900) then
+            if ( awaiting_timeout = true AND category_time.TotalMilliseconds() > 1000 ) then
                 awaiting_timeout = false
-                ' This calls the content callback
-                ' If the content function returns invalid data, don't crash the channel.
-                contentlist = firstValid( content_f( contentdata1, contentdata2, category_idx ), [] )
-                if (contentlist.Count() = 0) then
-                    screen.SetContentList([])
-                    screen.ShowMessage("No viewable content in this section")
+                if ( category_queried <> category_idx ) then
+                    category_queried = category_idx
+                    ' This calls the content callback
+                    ' If the content function returns invalid data, don't crash the channel.
+                    contentlist = firstValid( content_f( contentdata1, contentdata2, category_idx ), [] )
+                    if (contentlist.Count() = 0) then
+                        screen.SetContentList([])
+                        screen.ShowMessage("No viewable content in this section")
+                    else
+                        screen.SetContentList(contentlist)
+                        screen.SetFocusedListItem(0)
+                        idx% = 0
+                    end if
                 else
-                    screen.SetContentList(contentlist)
-                    screen.SetFocusedListItem(0)
-                    idx% = 0
+                    print ("Not querying same item.")
                 end if
             else if (multicast_time.TotalSeconds() > 2) then
                 ' Don't allow the CheckForMCast function to run too much due to the category query change

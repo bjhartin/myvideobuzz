@@ -230,21 +230,6 @@ Function buildIt( one, middle, ending ) as String
     return result
 End Function
 
-
-Function batch_request_xml( ids as Dynamic ) as String
-    sQuote = Quote()
-    returnVal = "<feed xmlns=" + sQuote + "http://www.w3.org/2005/Atom" + sQuote
-    returnVal = returnVal + " xmlns:media=" + sQuote + "http://search.yahoo.com/mrss/" + sQuote
-    returnVal = returnVal + " xmlns:batch=" + sQuote + "http://schemas.google.com/gdata/batch" + sQuote
-    returnVal = returnVal + " xmlns:yt=" + sQuote + "http://gdata.youtube.com/schemas/2007" + sQuote + ">"
-    returnVal = returnVal + "<batch:operation type=" + Quote() + "query" + Quote() + "/>"
-    for each id in ids
-        returnVal = returnVal + "<entry><id>http://gdata.youtube.com/feeds/api/videos/" + id + "</id></entry>"
-    end for
-    returnVal = returnVal + "</feed>"
-    return returnVal
-End Function
-
 Function ExecBatchQueryV3_impl( videoList as Object, mostPopular = false as Boolean, pageToken = invalid as Dynamic ) as Dynamic
 
     parms = []
@@ -334,7 +319,12 @@ Sub FetchVideoList_impl(contentFunc As Dynamic, title As String, isCategoryList 
     contentArgument = invalid
     if ( categoryData <> invalid AND categoryData.contentArg <> invalid ) then
         contentArgument = categoryData.contentArg
-        response = m[contentFunc]( categoryData.contentArg, categoryData.nextPageToken )
+        ' If the calling function doesn't ever intend to include page information...
+        if ( categoryData.noPages = invalid ) then
+            response = m[contentFunc]( categoryData.contentArg, categoryData.nextPageToken )
+        else
+            response = m[contentFunc]( categoryData.contentArg )
+        end if
     else if ( categoryData <> invalid AND categoryData.nextPageToken <> invalid ) then
         response = m[contentFunc]( categoryData.nextPageToken )
     else
@@ -947,11 +937,11 @@ Function VideoDetails_impl(theVideo As Object, breadcrumb As String, videos=inva
                         BuildButtons( activeVideo, screen )
                     end if
                 else if ( msg.GetIndex() = 6 ) then ' Linked videos
-                    m.ExecBatchQueryV3( batch_request_xml( activeVideo["Linked"] ) )
+                    m.FetchVideoList( "ExecBatchQueryV3", "Linked Videos", false, { contentArg: activeVideo["Linked"], noPages: true} )
                 else if (msg.GetIndex() = 7) then ' View playlist
                     if ( activeVideo["Source"] = GetConstants().sYOUTUBE ) then
+                        ' Handle when the Video Details screen is being shown with the 'View Playlist' menu item only.
                         if ( firstValid( activeVideo["IsPlaylist"], false ) = true ) then
-                            print "First link @ video::901"
                             m.FetchVideoList( "GetPlaylistItems", activeVideo["TitleSeason"], false, {contentArg: activeVideo["PlaylistID"]}, "Loading playlist...", true)
                         else
                             plId = activeVideo["PlaylistID"]

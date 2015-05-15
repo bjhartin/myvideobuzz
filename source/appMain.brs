@@ -119,7 +119,7 @@ Sub ShowHomeScreen()
     'ids.push("nje6dcArZrI")
     'ids.push("UMyoCr2MnpM")
     'ids.push("5_yOGBzBTdc")
-    'youtube.ExecBatchQuery( batch_request_xml( ids ) )
+    'youtube.FetchVideoList( "ExecBatchQueryV3", "Vidyas", false, { contentArg: ids, noPages: true} )
 
     ' Testing out a specific playlist
     'youtube.FetchVideoList("GetPlaylistItems", "Blah", false, {contentArg: "PL30BFB50685A0252B"})
