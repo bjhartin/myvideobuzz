@@ -19,19 +19,29 @@ Function InitYouTube() As Object
     if (tmpLength <> invalid) then
         this.searchLengthFilter = tmpLength
     end if
-
-    this.searchSort = ""
-    ' Version of the searchSort value.
-    this.searchSortHistory = "1"
-    searchSortVer = RegRead( "SearchSortVersion", "Settings" )
-    if ( searchSortVer = invalid OR searchSortVer <> this.searchSortHistory ) then
-        print( "Search Sort version mismatch (clearing setting), found: " + tostr( searchSortVer ) + ", expected: " + this.searchSortHistory )
-        RegWrite( "SearchSortVersion", this.searchSortHistory, "Settings" )
+    ' Version of the searchLength value.
+    this.searchLengthHistory = "2"
+    searchLengthVer = RegRead( "SearchLengthVersion", "Settings" )
+    if ( searchLengthVer = invalid OR searchLengthVer <> this.searchLengthHistory ) then
+        print( "Search Length version mismatch (clearing setting), found: " + tostr( searchLengthVer ) + ", expected: " + this.searchLengthHistory )
+        this.searchLengthFilter = ""
+        RegDelete("length", "Search")
+        RegWrite( "SearchLengthVersion", this.searchLengthHistory, "Settings" )
     end if
 
+    this.searchSort = ""
     tmpSort = RegRead("sort", "Search")
     if (tmpSort <> invalid) then
         this.searchSort = tmpSort
+    end if
+    ' Version of the searchSort value.
+    this.searchSortHistory = "2"
+    searchSortVer = RegRead( "SearchSortVersion", "Settings" )
+    if ( searchSortVer = invalid OR searchSortVer <> this.searchSortHistory ) then
+        print( "Search Sort version mismatch (clearing setting), found: " + tostr( searchSortVer ) + ", expected: " + this.searchSortHistory )
+        this.searchSort = ""
+        RegDelete("sort", "Search")
+        RegWrite( "SearchSortVersion", this.searchSortHistory, "Settings" )
     end if
 
     this.CurrentPageTitle = ""
@@ -182,8 +192,12 @@ Sub GetWhatsNew_impl()
         m.WhatsNewLastQueried% = curDateSecs%
 
         tempVids = []
+        screen.showMessage( "Getting subscription activity..." )
+        counter = 0
         for each item in response.items
             vids = m.GetFilteredActivity( item.id, twoDaysAgo )
+            counter = counter + 1
+            screen.showMessage( "Getting subscription activity..." + toStr(counter) + " of " + toStr(response.items.Count()) )
             if ( vids <> invalid ) then
                 vidList = m.newVideoListFromJSON( vids.items )
                 for each vidya in vidList
@@ -192,6 +206,7 @@ Sub GetWhatsNew_impl()
             end if
         end for
         if ( tempVids.Count() > 0 ) then
+            screen.showMessage( "Getting video metadata..." )
             metadata = GetVideoMetaData( tempVids )
             Sort( metadata, Function(vid as Object) as Integer
                     return vid.DateSeconds

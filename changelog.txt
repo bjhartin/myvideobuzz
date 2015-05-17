@@ -1,5 +1,8 @@
 - If "What To Watch" is not the first item on the main menu, go to Settings->Add Account, and just hit 'Finished'. This should allow the channel to update as necessary.
 
+Version 1.7 Build 409
+    - Added some "progress" display to the What to Watch loading screen.
+    - Fix clearing of outdated search filter stored items.
 Version 1.7 Build 408
     - Fixed the "Linked Videos" feature.
     - Increased timeout between querying videos on the "category" views.
