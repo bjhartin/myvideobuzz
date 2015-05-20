@@ -187,6 +187,23 @@ Sub GetWhatsNew_impl()
             ShowConnectionFailed()
             return
         end if
+        subList = response.items
+        ' Workaround for http://code.google.com/p/gdata-issues/issues/detail?id=7163
+        response.nextPageToken = "CDIQAA"
+        ' Add support for up to 100 subscriptions
+        if ( response.nextPageToken <> invalid AND subList.Count() = 50 ) then
+            screen.showMessage( "Querying second set of subscriptions..." )
+            moreSubs = m.MySubscriptions( response.nextPageToken )
+            if ( moreSubs <> invalid ) then
+                for each subscription in moreSubs.items
+                    subList.Push( subscription )
+                end for
+            else
+                print ( "Invalid response from MySubscriptions")
+            end if
+        else
+            print ( "No next page token.")
+        end if
 
         m.WhatsNewVideos = []
         m.WhatsNewLastQueried% = curDateSecs%
@@ -194,27 +211,51 @@ Sub GetWhatsNew_impl()
         tempVids = []
         screen.showMessage( "Getting subscription activity..." )
         counter = 0
-        for each item in response.items
+        for each item in subList
             vids = m.GetFilteredActivity( item.id, twoDaysAgo )
             counter = counter + 1
-            screen.showMessage( "Getting subscription activity..." + toStr(counter) + " of " + toStr(response.items.Count()) )
+            screen.showMessage( "Getting subscription activity..." + toStr(counter) + " of " + toStr(subList.Count()) )
             if ( vids <> invalid ) then
-                vidList = m.newVideoListFromJSON( vids.items )
-                for each vidya in vidList
-                    tempVids.Push( vidya )
-                end for
+                tempVids.Append( vids )
             end if
         end for
+
         if ( tempVids.Count() > 0 ) then
-            screen.showMessage( "Getting video metadata..." )
-            metadata = GetVideoMetaData( tempVids )
-            Sort( metadata, Function(vid as Object) as Integer
-                    return vid.DateSeconds
-                End Function )
-            while ( metadata.Count() > 50 )
-                metadata.Pop()
+            print ("Getting video metadata for " + toStr( tempVids.Count() ) + " videos...")
+            screen.showMessage( "Getting video metadata for " + toStr( tempVids.Count() ) + " videos..." )
+            vidList = invalid
+            bulkList = []
+            while ( tempVids.Count() > 0 )
+                bulkList.Push( tempVids.Pop() )
+                if ( bulkList.Count() = 49 OR tempVids.Count() = 0 ) then
+                    videoData = m.ExecBatchQueryV3( bulkList )
+                    if ( videoData <> invalid ) then
+                        if ( vidList = invalid ) then
+                            vidList = videoData.items
+                        else if ( videoData.items <> invalid ) then
+                            for each item in videoData.items
+                                vidList.Push( item )
+                            end for
+                        end if
+                    end if
+                    bulkList.Clear()
+                end if
             end while
-            m.WhatsNewVideos = metadata
+            if ( vidList <> invalid ) then
+                videoListFromJSON = m.newVideoListFromJSON( vidList )
+                metadata = GetVideoMetaData( videoListFromJSON )
+                Sort( metadata, Function(vid as Object) as Integer
+                        return vid.DateSeconds
+                        End Function )
+                while ( metadata.Count() > 100 )
+                    metadata.Pop()
+                end while
+
+                title = title + " (" + toStr( metadata.Count() ) + " Videos)"
+                screen.SetBreadcrumbText( title, "" )
+                screen.SetTitle( title )
+                m.WhatsNewVideos = metadata
+            end if
         end if
     end if
     if ( m.WhatsNewVideos.Count() = 0 ) then
@@ -470,7 +511,7 @@ Function GetFilteredActivity_impl( forChannelId as String, fromDate as String ) 
             end if
         end for
         if ( vids.Count() > 0 ) then
-            return m.ExecBatchQueryV3( vids )
+            return vids
         end if
     end if
     return invalid
@@ -507,7 +548,7 @@ Function MySubscriptions_impl( pageToken = invalid as Dynamic ) as Dynamic
     parms = []
     parms.push( { name: "part", value: "snippet,contentDetails" } )
     parms.push( { name: "channelId", value: m.channelId } )
-    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "maxResults", value: "50" } )
     parms.push( { name: "order", value: "unread" } )
     parms.push( { name: "fields", value: "items(id,snippet(title,resourceId),contentDetails),nextPageToken" } )
     if ( pageToken <> invalid ) then
