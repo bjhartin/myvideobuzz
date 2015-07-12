@@ -1,8 +1,7 @@
+Version 2.0 Build 001
+    - Fixed Vine video parsing for reddit.
 Version 2.0 Build 000
     - Official release that supports the YouTube V3 API.
 Version 1.7 Build 410
     - Adds support for up to 100 subscriptions in the "What's New" feature.
     - It will display up to 100 videos.
-Version 1.7 Build 409
-    - Added some "progress" display to the What to Watch loading screen.
-    - Fix clearing of outdated search filter stored items.

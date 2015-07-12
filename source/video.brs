@@ -1618,7 +1618,8 @@ Function getVineMP4Url(video as Object, timeout = 0 as Integer, loginCookie = ""
     video["Streams"].Clear()
 
     if ( video["URL"] <> invalid ) then
-        vineMP4UrlRegex = CreateObject( "roRegex", "<meta itemprop=" + Quote() + "contentURL" + Quote() + " content=" + Quote() + "(.*)" + Quote(), "ig" )
+        ' "contentUrl"\s*:\s*"(.*)"
+        vineMP4UrlRegex = CreateObject( "roRegex", Quote() + "contentUrl" + Quote() + "\s*:\s*" + Quote() + "(.*)" + Quote(), "ig" )
         url = video["URL"]
         isSSL = false
         if ( Left( LCase( url ), 5 ) = "https" ) then
