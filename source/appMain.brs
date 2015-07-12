@@ -49,7 +49,19 @@ Sub ShowHomeScreen()
     end if
     consts = getConstants()
     prefs = getPrefs()
-
+    ' First see if someone is updating their channel, and may not have loaded their channel ID yet.
+    if (youtube.userName <> invalid AND youtube.channelId = invalid) then
+        result = findChannelID( youtube.userName )
+        if (result = invalid) then
+            if (ShowDialog2Buttons("Error", "It appears your YouTube User ID is invalid, would you like to attempt to fix this?", "Not Now", "Yes") = 2 ) then
+                youtube.AddAccount()
+            end if
+        else
+            RegWrite( "ytChannelId", result.Trim() )
+            youtube.channelId = result.Trim()
+            print "Successfully found a valid channel id!" ; result.Trim()
+        end if
+    end if
     menudata=[]
     if (youtube.channelId <> invalid) and (isnonemptystr(youtube.channelId)) then
         menudata.Push({ShortDescriptionLine1:"What to Watch", OnClick: "GetWhatsNew", ShortDescriptionLine2:"What's new to watch", HDPosterUrl:"pkg:/images/whattowatch.jpg", SDPosterUrl:"pkg:/images/whattowatch.jpg"})

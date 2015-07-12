@@ -1,16 +1,8 @@
-- If "What To Watch" is not the first item on the main menu, go to Settings->Add Account, and just hit 'Finished'. This should allow the channel to update as necessary.
-
+Version 2.0 Build 000
+    - Official release that supports the YouTube V3 API.
 Version 1.7 Build 410
     - Adds support for up to 100 subscriptions in the "What's New" feature.
     - It will display up to 100 videos.
 Version 1.7 Build 409
     - Added some "progress" display to the What to Watch loading screen.
     - Fix clearing of outdated search filter stored items.
-Version 1.7 Build 408
-    - Fixed the "Linked Videos" feature.
-    - Increased timeout between querying videos on the "category" views.
-Version 1.7 Build 407
-    - Re-added a custom "What to Watch"
-    - Right now, it is only based on the first 49 subscriptions returned.
-    - It will only include videos for the past two days, to speed it up.
-    - The list will only re-build once per 30 minutes (for speed).

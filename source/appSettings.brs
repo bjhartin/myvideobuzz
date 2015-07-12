@@ -237,7 +237,7 @@ Function youtube_add_account() as Boolean
         screen.SetText(ytusername.Trim())
     end if
 
-    screen.SetDisplayText("Enter your YouTube Username (not email address)")
+    screen.SetDisplayText("Enter your YouTube User ID (not email address)")
     screen.SetMaxLength(35)
     screen.AddButton(1, "Finished")
     screen.AddButton(2, "Help")
@@ -254,17 +254,18 @@ Function youtube_add_account() as Boolean
                     searchText = screen.GetText().Trim()
                     result = findChannelID( searchText )
                     if (result = invalid) then
-                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User ID. Please go to http://github.com/Protuhj/myvideobuzz to find your YouTube username.", "Ok")
+                        ShowDialog1Button("Error", searchText + " is not a valid YouTube User ID. Please go to http://www.youtube.com/account_advanced to find your YouTube ID.", "Ok")
                     else
                         RegWrite( "YTUSERNAME1", searchText )
                         RegWrite( "ytChannelId", result.Trim() )
                         m.userName = searchText
                         m.channelId = result.Trim()
+                        ShowDialog1Button( "Hooray!", "Success!", "Done" )
                         screen.Close()
                         return true
                     end if
                 else if (msg.GetIndex() = 2) then
-                    ShowDialog1Button("Help", "Go to http://www.youtube.com/account_advanced to find your YouTube username.", "Ok")
+                    ShowDialog1Button("Help", "Go to http://www.youtube.com/account_advanced to find your YouTube User ID." + Chr(10) + "It must be entered exactly as it's shown (upper/lowercase matter)!" + Chr(10) + "Hint: Your ID will look like this: boMX_UNgaPBsUOIgasn3-Q.", "Ok")
                 else if (msg.GetIndex() = 3) then
                     if (ShowDialog2Buttons("Confirmation", "Are you sure you want to reset your username?", "Not Now", "Yes") = 2) then
                         RegDelete("YTUSERNAME1")
@@ -295,6 +296,9 @@ Function findChannelID( userNameOrId as String ) as Dynamic
         end if
     end if
     ' If we get here, then a valid username wasn't entered.
+    if (userNameOrId <> invalid AND Len(userNameOrId) > 0 AND Left(userNameOrId, 2) = "UC") then
+        userNameOrId = Mid(userNameOrId, 3)
+    end if
     parms.Clear()
     parms.push( { name: "part", value: "snippet" } )
     parms.push( { name: "id", value: "UC" + userNameOrId } )
@@ -756,7 +760,7 @@ End Function
 
 Function LoadConstants() as Object
     this = {}
-    this.VERSION_STR       = "1.7.4"
+    this.VERSION_STR       = "2.0.0"
     this.USER_AGENT        = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0"
     this.NO_PREFERENCE     = 0
     this.FORCE_HIGHEST     = 1
