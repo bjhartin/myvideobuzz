@@ -1,7 +1,7 @@
+Version 2.0 Build 002
+    - Changes the API call to get user videos from the GetActivity endpoint to the Search endpoint, this should allow more videos from the user's history to show.
+    - Fixes potential crash with bad API result.
 Version 2.0 Build 001
     - Fixed Vine video parsing for reddit.
 Version 2.0 Build 000
     - Official release that supports the YouTube V3 API.
-Version 1.7 Build 410
-    - Adds support for up to 100 subscriptions in the "What's New" feature.
-    - It will display up to 100 videos.

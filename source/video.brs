@@ -342,7 +342,12 @@ End Function
 ' YouTube User uploads
 '********************************************************************
 Sub BrowseUserVideos_impl(username As String, userID As String)
-    m.FetchVideoList( "GetActivity", "Videos By " + username, false, {contentArg: userID})
+    if (Left(userID, 2) = "UC") then
+        print "Viewing user videos via playlist items: " + "UU" + Mid(userID, 3)
+        m.FetchVideoList( "GetPlaylistItems", "Videos By " + username, false, {contentArg: "UU" + Mid(userID, 3)})
+    else
+        m.FetchVideoList( "GetActivity", "Videos By " + username, false, {contentArg: userID})
+    end if
 End Sub
 
 '********************************************************************
@@ -465,21 +470,24 @@ End Function
 
 Function GetActivity_impl( forChannelId as String, pageToken = invalid as Dynamic ) as Dynamic
     parms = []
-    parms.push( { name: "part", value: "contentDetails" } )
+    parms.push( { name: "part", value: "snippet" } )
+    parms.push( { name: "order", value: "date" } )
+    parms.push( { name: "safeSearch", value: "none" } )
+    parms.push( { name: "type", value: "video" } )
     parms.push( { name: "channelId", value: forChannelId } )
-    parms.push( { name: "maxResults", value: "49" } )
-    parms.push( { name: "fields", value: "items(contentDetails(upload(videoId))),nextPageToken,prevPageToken" } )
+    parms.push( { name: "maxResults", value: "50" } )
+    parms.push( { name: "fields", value: "items(id(videoId)),nextPageToken,prevPageToken" } )
     if ( pageToken <> invalid ) then
         parms.push( { name: "pageToken", value: pageToken } )
     end if
     ' Get activity
-    resp = m.BuildV3Request("activities", parms)
+    resp = m.BuildV3Request("search", parms)
     if ( resp <> invalid ) then
         vids = []
         for each item in resp.items
             'if ( item.snippet.type = "upload" ) then
-            if ( item.contentDetails <> invalid AND item.contentDetails.upload <> invalid AND item.contentDetails.upload.videoId <> invalid ) then
-                vids.Push( item.contentDetails.upload.videoId )
+            if ( item.id <> invalid AND item.id.videoId <> invalid ) then
+                vids.Push( item.id.videoId )
             end if
         end for
         if ( vids.Count() > 0 ) then
@@ -566,7 +574,12 @@ Function MySubscriptions_impl( pageToken = invalid as Dynamic ) as Dynamic
 End Function
 
 Function GetVideosActivity_impl( channelId as String, pageToken = invalid as Dynamic ) as Dynamic
-    return m.GetActivity( channelId, pageToken )
+    if (Left(channelId, 2) = "UC") then
+        print "Getting subscription videos via playlist items: " + "UU" + Mid(channelId, 3)
+        return m.GetPlaylistItems( "UU" + Mid(channelId, 3), pageToken)
+    else
+        return m.GetActivity( channelId, pageToken )
+    end if
 End Function
 
 Function MyPlaylists_impl( pageToken = invalid as Dynamic ) as Dynamic
@@ -590,7 +603,7 @@ Function GetPlaylistItems_impl( playlistId as String, pageToken = invalid as Dyn
     parms = []
     parms.push( { name: "part", value: "snippet" } )
     parms.push( { name: "playlistId", value: playlistId } )
-    parms.push( { name: "maxResults", value: "49" } )
+    parms.push( { name: "maxResults", value: "50" } )
     parms.push( { name: "fields", value: "items(snippet(resourceId)),nextPageToken,prevPageToken" } )
     if ( pageToken <> invalid ) then
         parms.push( { name: "pageToken", value: pageToken } )
@@ -779,8 +792,10 @@ Function newVideoFromJSON_impl(jsonVideoItem as Object) As Object
     video["DateSeconds"]    = GetUploadSeconds_impl( jsonVideoItem.snippet.publishedAt )
     video["Category"]       = jsonVideoItem.statistics.viewCount + " Views"
     video["Rating"]         = 0
-    if (jsonVideoItem.statistics.likeCount.Toint() > 0) then
-        video["Rating"]         = Int(jsonVideoItem.statistics.likeCount.ToFloat() / (jsonVideoItem.statistics.likeCount.ToFloat() + jsonVideoItem.statistics.dislikeCount.ToFloat()) * 100)
+    if (jsonVideoItem.statistics.likeCount <> invalid AND jsonVideoItem.statistics.dislikeCount <> invalid AND jsonVideoItem.statistics.likeCount.Toint() > 0) then
+        video["Rating"] = Int(jsonVideoItem.statistics.likeCount.ToFloat() / (jsonVideoItem.statistics.likeCount.ToFloat() + jsonVideoItem.statistics.dislikeCount.ToFloat()) * 100)
+    else
+        video["Rating"] = 0
     end if
     video["Thumb"]          = firstValid( jsonVideoItem.snippet.thumbnails.medium.url, jsonVideoItem.snippet.thumbnails.default.url, "" )
     return video
@@ -1142,6 +1157,8 @@ Function DisplayVideo(content As Object)
                         sleepyDialog.Close()
                         exit while
                     end if
+                else
+                    ' CheckForMCast()
                 end if
             else if (msg.isFullResult()) then
                 content["PlayStart"] = 0
