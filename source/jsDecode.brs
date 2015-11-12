@@ -83,7 +83,7 @@ Function extractFunctionFromJS(funcName as String, jsBody as String) as Object
 
     ' Doesn't return entire function body -- regex is semi-garbage
     'print("Extracting function '" + funcName + "' from javascript")
-    fpattern = CreateObject( "roRegex", "function\s+" + funcName + "\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
+    fpattern = CreateObject( "roRegex", "(?:function\s+" + funcName + "|var\s+" + funcName + "\s*=\s*function)\s*\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
     fMatch = fpattern.Match( jsBody )
     matchNum = 0
     ' Match[0] - whole matchNum
@@ -94,9 +94,11 @@ Function extractFunctionFromJS(funcName as String, jsBody as String) as Object
     if ( fMatch.Count() > 2 )
         retVal.parameters = fMatch[1].Tokenize(",")
         retVal.body = fMatch[2]
+        'printaa(retVal)
         'print( "extracted function " + retVal.name + " ###### body: " + retVal.body )
     else
         print ("Couldn't find function " + funcName)
+        retVal = invalid
     end if
     return retVal
 End Function
@@ -110,7 +112,7 @@ Function getMainfuncFromJS(jsBody as String) as Dynamic
     funcBody = invalid
     if ( matches.Count() > 1 ) then
         funcname = matches[1]
-        'print( "Found main function: " + funcname )
+        print( "Found main function: " + funcname )
         funcBody = extractFunctionFromJS( funcname, jsBody )
     end if
     return funcBody
@@ -246,7 +248,7 @@ Function solve(f, returns=True as Boolean) as Dynamic
         next
         if ( found = false ) then
             print( "no match for " + part )
-            return {}
+            return invalid
         end if
 
         if ( name = "split_or_join" ) then
