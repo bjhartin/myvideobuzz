@@ -1,3 +1,5 @@
+Version 2.0 Build 004
+    - Fixes crash when trying to load subscriptions that are private.
 Version 2.0 Build 003
     - Fixes crash in YouTube music videos.
 Version 2.0 Build 002
@@ -5,5 +7,3 @@ Version 2.0 Build 002
     - Fixes potential crash with bad API result.
 Version 2.0 Build 001
     - Fixed Vine video parsing for reddit.
-Version 2.0 Build 000
-    - Official release that supports the YouTube V3 API.

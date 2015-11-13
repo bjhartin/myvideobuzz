@@ -452,7 +452,13 @@ Function BuildV3Request_impl(resource as String, additionalParams = invalid as D
     end if
     result = http.getToStringWithTimeout(10, headers)
     if (http.status = 403) then
-        ShowErrorDialog(title + " may be private, or unavailable at this time. Try again.", "403 Forbidden")
+        if (LCase(resource) = "subscriptions") then
+            ShowErrorDialog("Request failed. Please go to https://www.youtube.com/account_privacy and ensure your subscriptions are public.", "Failed")
+        else if (LCase(resource) = "playlists") then
+            ShowErrorDialog("Request failed. Please go to YouTube, and ensure your playlists are public.", "Failed")
+        else
+            ShowErrorDialog("Request failed. YouTube returned '403 Forbidden,' try again later.", "Request Failed")
+        end if
         return invalid
     end if
     if ( http.status = 200 ) then
