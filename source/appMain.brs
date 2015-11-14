@@ -131,6 +131,7 @@ Sub ShowHomeScreen()
     'ids.push("nje6dcArZrI")
     'ids.push("UMyoCr2MnpM")
     'ids.push("5_yOGBzBTdc")
+    'ids.push("_ovdm2yX4MA") ' AVICII VEVO
     'youtube.FetchVideoList( "ExecBatchQueryV3", "Vidyas", false, { contentArg: ids, noPages: true} )
 
     ' Testing out a specific playlist

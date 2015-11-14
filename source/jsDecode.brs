@@ -83,7 +83,7 @@ Function extractFunctionFromJS(funcName as String, jsBody as String) as Object
 
     ' Doesn't return entire function body -- regex is semi-garbage
     'print("Extracting function '" + funcName + "' from javascript")
-    fpattern = CreateObject( "roRegex", "(?:function\s+" + funcName + "|var\s+" + funcName + "\s*=\s*function)\s*\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
+    fpattern = CreateObject( "roRegex", "(?:function\s+" + regexEscape( funcName ) + "|var\s+" + regexEscape( funcName ) + "\s*=\s*function)\s*\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
     fMatch = fpattern.Match( jsBody )
     matchNum = 0
     ' Match[0] - whole matchNum
