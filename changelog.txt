@@ -1,3 +1,5 @@
+Version 2.0 Build 006
+    - Fixes ANOTHER crash for YouTube music videos.
 Version 2.0 Build 005
     - Fixes another crash for YouTube music videos.
 Version 2.0 Build 004
@@ -7,5 +9,3 @@ Version 2.0 Build 003
 Version 2.0 Build 002
     - Changes the API call to get user videos from the GetActivity endpoint to the Search endpoint, this should allow more videos from the user's history to show.
     - Fixes potential crash with bad API result.
-Version 2.0 Build 001
-    - Fixed Vine video parsing for reddit.

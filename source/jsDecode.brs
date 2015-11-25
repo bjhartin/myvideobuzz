@@ -8,7 +8,7 @@ Function decodesig(sig as String) as Dynamic
     ' lookup main function in funcmap
     mainfunction = getYoutube().funcmap
     if ( mainfunction <> invalid ) then
-        'PrintAA( mainfunction )
+        ' PrintAA( mainfunction )
         mainfunction = mainfunction["mainfunction"]
         param = mainfunction["parameters"]
         if ( param.Count() <> 1 ) then
@@ -82,8 +82,8 @@ Function extractFunctionFromJS(funcName as String, jsBody as String) as Object
     ' Return a dict representation of the function.
 
     ' Doesn't return entire function body -- regex is semi-garbage
-    'print("Extracting function '" + funcName + "' from javascript")
-    fpattern = CreateObject( "roRegex", "(?:function\s+" + regexEscape( funcName ) + "|var\s+" + regexEscape( funcName ) + "\s*=\s*function)\s*\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
+    print("Extracting function '" + funcName + "' from javascript")
+    fpattern = CreateObject( "roRegex", "(?:function\s+" + regexEscape( funcName ) + "|(?:var\s+)?" + regexEscape( funcName ) + "\s*=\s*function)\s*\(((?:\w+,?)+)\)\{([^}]+)\}(?:,\s*)?", "" )
     fMatch = fpattern.Match( jsBody )
     matchNum = 0
     ' Match[0] - whole matchNum
@@ -169,7 +169,7 @@ Function extractDictFuncFromJS(name as String, jsText as String) as Object
         var = Left( name, dotPos - 1 )
         fname = Mid( name, dotPos + 1 )
         ' var and fname are not currently escaped properly, in the case of odd characters for regular expressions
-        fpattern = CreateObject( "roRegex", "var\s+" + regexEscape( var ) + "\s*\=\s*\{.{0,2000}?" + regexEscape( fname ) + "\:function\(((?:\w+,?)+)\)\{([^}]+)\}", "" )
+        fpattern = CreateObject( "roRegex", "var\s+" + regexEscape( var ) + "\s*\=\s*\{.{0,2000}?" + regexEscape( fname ) + "\:function\(((?:\w+,?)+)\)\{([^}]+)\}", "s" )
         'm = re.search(fpattern % (re.escape(var), re.escape(fname)), js)
         'args, body = m.groups()
         matches = fpattern.Match( jsText )
@@ -215,7 +215,7 @@ Function getFuncFromCall(caller as Object, name as String, arguments as Object) 
     for each arg in arguments
         value = getVal( arg, caller["args"] )
         '# function may not use all arguments
-        if (index < newfunction["parameters"].Count() ) then
+        if (newfunction["parameters"] <> invalid AND index < newfunction["parameters"].Count() ) then
             param = newfunction["parameters"][index]
             newfunction["args"][param] = value
         end if
@@ -233,8 +233,8 @@ Function solve(f, returns=True as Boolean) as Dynamic
 
     parts = f["body"].Tokenize( ";" )
     for each part in parts
-        'print("-----------Working on part: " + part)
-        'printaa( f )
+        ' print("-----------Working on part: " + part)
+        ' printaa( f )
         name = ""
         found = false
         for each key in patterns
